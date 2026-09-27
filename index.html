@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Speech Remastering — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2328; --ink2:#3d444d; --muted:#6a737d; --faint:#8c959f;
+  --line:#e6e8eb; --line2:#d0d7de; --soft:#f6f8fa;
+  /* NAVER green: interaction state only (selected, playing, links) */
+  --brand:#03c75a; --brand-dk:#0a7c3e; --brand-bg:#eaf9f0; --brand-bd:#8fe0b1;
+  /* element pastels: bg / border / text */
+  --M-bg:#e5e8fb; --M-bd:#b8c1f0; --M-fg:#34438f;
+  --I-bg:#efe7f9; --I-bd:#d2bff0; --I-fg:#5b3d8a;
+  --N-bg:#f7eedd; --N-bd:#e6cfa3; --N-fg:#765626;
+  --E-bg:#fbe6e3; --E-bd:#f0c0b8; --E-fg:#8a3b33;
+  --R-bg:#dcf1f7; --R-bd:#9dd4e2; --R-fg:#1f6272;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:60px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+@media (max-width:600px){.wrap{padding:0 16px}}
+h1,h2,h3{margin:0;line-height:1.25;font-weight:700;letter-spacing:-.015em}
+
+/* header */
+header{padding:72px 0 36px;text-align:center}
+header h1{font-size:clamp(28px,4vw,40px)}
+header .sub{font-size:clamp(16px,2vw,19px);color:var(--muted);margin-top:8px}
+header .authors{margin-top:22px}
+header .aff{color:var(--muted);font-size:14px}
+header .btns{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+header .btns a{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px;border-radius:999px;border:1px solid var(--brand-bd);background:var(--brand-bg);color:var(--brand-dk);font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
+header .btns a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+header .btns .ic{font-size:16px;line-height:1}
+.abstract{max-width:760px;margin:40px auto 0;text-align:left}
+.abstract h2,.guide h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.abstract p{margin:0;color:var(--ink2)}
+section.guide{padding:40px 0 0}
+.guide .box{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:24px 28px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px}
+@media (max-width:820px){.guide .box{grid-template-columns:1fr;padding:20px}}
+.guide h3{font-size:15px;margin-bottom:12px}
+.guide ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.guide li{display:grid;grid-template-columns:14px 1fr;gap:10px;align-items:baseline;font-size:14px;color:var(--ink2)}
+.guide li .dotc{position:relative;top:1px}
+.guide li b{color:var(--ink);font-weight:600}
+.guide ol{margin:0;padding:0;list-style:none;counter-reset:st;display:grid;gap:10px}
+.guide ol li{grid-template-columns:24px 1fr;counter-increment:st}
+.guide ol li::before{content:counter(st);width:22px;height:22px;border-radius:50%;background:var(--brand-bg);border:1px solid var(--brand-bd);color:var(--brand-dk);font-size:12px;font-weight:700;display:grid;place-items:center}
+.guide .tip{margin:14px 0 0;font-size:13px;color:var(--muted)}
+kbd{font:600 11px ui-monospace,Menlo,monospace;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:#fff;color:var(--ink)}
+.el{display:inline-flex;align-items:center;gap:6px}
+.dotc{width:9px;height:9px;border-radius:50%;background:color-mix(in srgb,var(--c-bd) 55%,var(--c-fg));display:inline-block;flex:none}
+
+/* nav */
+nav{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{position:relative;display:flex;gap:26px;overflow-x:auto;scrollbar-width:none}
+nav .wrap::-webkit-scrollbar{display:none}
+nav a{flex:none;text-decoration:none;color:var(--muted);font-size:14px;font-weight:500;padding:14px 0 12px;border-bottom:2px solid transparent}
+nav a:hover{color:var(--ink)}
+nav a.on{color:var(--ink);border-color:var(--brand)}
+
+/* sections */
+section{padding:56px 0 8px}
+.sec-head h2{font-size:26px}
+.sec-head .desc{margin:8px 0 0;color:var(--ink2);max-width:760px}
+.sec-head .verbs{margin:6px 0 0;color:var(--muted);font-size:13.5px}
+
+/* sample block */
+.sample{border-top:1px solid var(--line);padding:26px 0 30px;margin-top:22px}
+.s-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
+.s-head .idx{font-weight:600;color:var(--ink);font-size:14px}
+.s-head .has{display:inline-flex;gap:14px;flex-wrap:wrap}
+.opts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
+.opts .lb{font-size:13px;color:var(--muted);min-width:68px}
+.pill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px 0 12px;border-radius:999px;border:1px solid var(--line2);background:#fff;color:var(--ink2);font-size:13.5px;font-weight:500;transition:background .15s,border-color .15s,color .15s}
+.pill:hover{border-color:var(--brand-bd)}
+.pill .dotc{width:10px;height:10px}
+.pill .ck{display:none;color:var(--brand-dk);font-weight:700;font-size:12px;margin-right:-2px}
+.pill.on{background:var(--brand-bg);border-color:var(--brand);color:var(--brand-dk);font-weight:600;box-shadow:0 0 0 1px var(--brand) inset}
+.pill.on .ck{display:inline}
+.pill.absent{border-style:dashed;color:var(--faint)}
+.pill.absent .dotc{background:transparent;border:1.5px dashed var(--c-bd)}
+.pill.absent.on{background:var(--soft);border-color:var(--brand-bd);color:var(--muted);box-shadow:none}
+.pill .x{font-size:11.5px;opacity:.85;font-weight:400}
+.pill.fixed{cursor:default}
+.opts .none{font-size:13.5px;color:var(--muted)}
+.prompt{font-size:21px;font-weight:500;margin:16px 0 0;line-height:1.45;letter-spacing:-.01em}
+.prompt .q{color:var(--faint);font-weight:400}
+.prompt .verb{font-weight:700}
+.prompt .np{background:var(--c-bg);color:var(--c-fg);border-radius:5px;padding:0 4px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.prompt .np.S{background:linear-gradient(90deg,var(--M-bg),var(--I-bg));color:var(--M-fg)}
+.notice{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
+.notice b{color:var(--ink2);font-weight:600}
+.s-note{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
+
+/* three columns */
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px}
+@media (max-width:760px){.cols{grid-template-columns:1fr;gap:12px}}
+.col-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.pb{width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;flex:none;color:var(--ink);background:#fff;transition:background .15s,border-color .15s}
+.pb:hover{border-color:var(--brand)}
+.pb svg{width:11px;height:11px;fill:currentColor}
+.col.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
+.col-lb{font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.col.playing .col-lb{color:var(--ink)}
+.col-t{margin-left:auto;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
+.spec{position:relative;height:116px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;cursor:pointer;touch-action:none;user-select:none;transition:border-color .15s}
+.col.playing .spec{border-color:var(--brand)}
+.spec canvas{position:absolute;inset:0;width:100%;height:100%}
+.spec .head{position:absolute;top:0;bottom:0;left:0;width:1.5px;margin-left:-.75px;background:var(--ink);opacity:0;pointer-events:none}
+.sample.active .spec .head{opacity:.3}
+.sample.active .col.playing .spec .head{opacity:.9}
+.spec .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 12px;color:var(--faint);font-size:12px;pointer-events:none;background:var(--soft)}
+.spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(31,35,40,.35);pointer-events:none}
+.spec .mark span{position:absolute;top:4px;left:4px;font-size:10.5px;color:var(--ink2);background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;white-space:nowrap}
+
+/* real-world */
+.rw{border-top:1px solid var(--line);padding:26px 0 30px;margin-top:22px;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:24px}
+@media (max-width:860px){.rw{grid-template-columns:1fr}}
+.vbox{position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9}
+.vbox video{width:100%;height:100%;display:block;object-fit:contain}
+.vbox .msg{position:absolute;inset:0;display:grid;place-items:center;color:#9aa1a9;font-size:12.5px;text-align:center;padding:0 16px;pointer-events:none}
+.rw h3{font-size:17px}
+.rw .src{font-size:13px;color:var(--muted);margin:2px 0 14px}
+.vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.vrow{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:12px 14px;border-top:1px solid var(--line);width:100%}
+.vrow:first-child{border-top:0}
+.vrow:hover{background:var(--soft)}
+.vrow .rd{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--line2);flex:none;margin-top:4px}
+.vrow.on{background:var(--brand-bg)}
+.vrow.on .rd{border:4.5px solid var(--brand)}
+.vrow .k{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.vrow .prompt{font-size:15.5px;margin:2px 0 0}
+.rw .spec{height:84px;margin-top:12px}
+.rw .spec .head{opacity:.8}
+
+footer{padding:56px 0 72px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:56px}
+footer h3{font-size:15px;color:var(--ink);margin-bottom:10px}
+pre.bib{background:var(--soft);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink2);margin:0}
+#check{position:fixed;right:12px;bottom:12px;max-width:min(520px,calc(100vw - 24px));max-height:50vh;overflow:auto;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* =====================================================================
+ * 1. MANIFEST — the only part you need to edit.
+ *
+ * Path convention (override per sample with inputSrc / outputs:{Tnn:src} / targets:{Tnn:src}):
+ *   audio/sim/<scene>/input.wav
+ *   audio/sim/<scene>/<Tnn>_output.wav
+ *   audio/sim/<scene>/<Tnn>_target.wav     (not needed for a no-op: target = input)
+ *   audio/real/<id>/video.mp4              (muted video)
+ *   audio/real/<id>/input.wav              (original audio of the clip)
+ *   audio/real/<id>/out_<k>.wav            (SRM output for outputs[k-1])
+ *
+ * scene.elements : letters in the scene (M is implied)
+ *                  M main speaker · I interfering speaker · N background noise
+ *                  E sound event  · R reverberation
+ * scene.event    : caption of the sound event, used in the prompt and the option label
+ * scene.marks    : optional [{t: seconds, label}] shown on the spectrograms
+ *
+ * section sample : { scene, select:[...], prompts:{Tnn:"..."}, tasks:[...], note }
+ *   select   default element selection (e.g. ["N","R"] for remove)
+ *   prompts  exact prompt used at inference per task (else a canonical one)
+ *   tasks    optional list of rendered tasks; other combinations say "not rendered"
+ * ===================================================================== */
+const DEMO = {
+  meta: {
+    title: "Speech Remastering",
+    subtitle: "Prompt-driven revision of a recorded speaking scene",
+    authors: "Author One, Author Two, Author Three",
+    affiliation: "NAVER Cloud",
+    venue: "Submitted to ICASSP 2027",
+    links: [ {label:"Paper", icon:"📄", href:"#"}, {label:"Code", icon:"💻", href:"#"} ],
+    intro: "Speech remastering revises the acoustic elements of a recorded speaking scene — the main speaker, an interfering speaker, sound events, background noise and the room's reverberation — according to a text prompt. The same recording turns into a different result for every prompt, and the elements the prompt does not name stay as they were captured.",
+    bibtex: "@inproceedings{srm2027,\n  title     = {TBD},\n  author    = {TBD},\n  booktitle = {ICASSP},\n  year      = {2027}\n}",
+  },
+  root: "audio/",
+
+  scenes: {
+    s01: { elements:"MNR" },
+    s02: { elements:"MINE", event:"door slam" },
+    s03: { elements:"MER",  event:"glass breaking", marks:[{t:2.4,label:"glass"}] },
+    s04: { elements:"MIN" },
+    s05: { elements:"MIR" },
+    s06: { elements:"MINER", event:"phone ringing" },
+    s07: { elements:"MNER", event:"keyboard typing" },
+    hero:{ elements:"MINER", event:"dog barking" },
+  },
+
+  sections: {
+    remove:    [ {scene:"s06", select:["N","R"]}, {scene:"s02", select:["I"]}, {scene:"s03", select:["E"]} ],
+    reduce:    [ {scene:"s01"}, {scene:"s05"}, {scene:"s04" /* no reverberation → no-op */} ],
+    enhance:   [ {scene:"s07"}, {scene:"s01"} ],
+    boost:     [ {scene:"s04", select:["M"]}, {scene:"s05", select:["M","I"]} ],
+    normalize: [ {scene:"s04"}, {scene:"s05"}, {scene:"s01" /* no interferer → no-op */} ],
+  },
+
+  /* One scene rendered with all 21 prompts. Kept for later — set show:true once such a recording is ready. */
+  hero: { show:false, scene:"hero", prompts:{} },
+
+  realworld: [
+    { id:"rw01", title:"Street interview", source:"Source: TBD (license: TBD)",
+      outputs:[ {prompt:"remove the background noise"}, {prompt:"enhance the speech"} ] },
+    { id:"rw02", title:"Lecture hall", source:"Source: TBD (license: TBD)",
+      outputs:[ {prompt:"reduce the reverberation"}, {prompt:"remove the reverberation"} ] },
+  ],
+};
+
+/* =====================================================================
+ * 2. TASK DEFINITIONS (fixed; paper Table 1 / release T01–T21)
+ * ===================================================================== */
+const ELS = ["M","I","N","E","R"];
+const EL_NAME  = {M:"Main speaker", I:"Interfering speaker", N:"Background noise", E:"Sound event", R:"Reverberation"};
+const EL_SHORT = {M:"Main speaker", I:"Interferer", N:"Noise", E:"Sound event", R:"Reverb"};
+const TASKS = {
+  T01:{op:"remove",els:["N"]}, T02:{op:"remove",els:["E"]}, T03:{op:"remove",els:["I"]}, T04:{op:"remove",els:["R"]},
+  T05:{op:"remove",els:["N","E"]}, T06:{op:"remove",els:["I","N"]}, T07:{op:"remove",els:["N","R"]},
+  T08:{op:"remove",els:["I","E"]}, T09:{op:"remove",els:["E","R"]}, T10:{op:"remove",els:["I","R"]},
+  T11:{op:"remove",els:["I","N","E"]}, T12:{op:"remove",els:["N","E","R"]}, T13:{op:"remove",els:["I","N","R"]},
+  T14:{op:"remove",els:["I","E","R"]}, T15:{op:"remove",els:["I","N","E","R"]},
+  T16:{op:"boost",els:["M"]}, T17:{op:"boost",els:["M","I"]}, T18:{op:"enhance",els:["N","E","R"]},
+  T19:{op:"reduce",els:["R"]}, T20:{op:"boost",els:["I"]}, T21:{op:"normalize",els:["I"]},
+};
+const OPS = {
+  remove:   {label:"Remove",    desc:"Takes the named elements out of the recording; everything the prompt does not name stays as captured. Several elements can be named in one prompt.", verbs:["remove","erase","eliminate","delete","get rid of","strip out"], opts:["I","N","E","R"], multi:true},
+  reduce:   {label:"Reduce",    desc:"Halves the reverberant tail of the recorded room while keeping its direct path, so the room is revised rather than replaced.", verbs:["reduce","dampen","mitigate","attenuate"], opts:["R"]},
+  enhance:  {label:"Enhance",   desc:"A goal-level request. Noise, sound events and reverberation are removed together and only the speech is left — conventional speech enhancement, reached as one operation of the model.", verbs:["enhance","clean"], opts:[]},
+  boost:    {label:"Boost",     desc:"Raises the named speech by +6 dB while the rest of the scene keeps its level.", verbs:["boost","amplify","make … louder","raise / increase / turn up the volume of"], opts:["M","I"], multi:true},
+  normalize:{label:"Normalize", desc:"Matches the level of the interfering speaker to that of the main speaker.", verbs:["normalize","balance","match the volume of"], opts:["I"]},
+};
+const OP_ORDER = ["remove","reduce","enhance","boost","normalize"];
+const REMOVE_COMBO = {};
+for (const [id,t] of Object.entries(TASKS)) if (t.op==="remove") REMOVE_COMBO[[...t.els].sort().join("")] = id;
+function taskFor(op, sel){
+  switch (op){
+    case "remove":    return REMOVE_COMBO[[...sel].sort().join("")];
+    case "reduce":    return "T19";
+    case "enhance":   return "T18";
+    case "boost":     return sel.has("M") && sel.has("I") ? "T17" : sel.has("I") ? "T20" : "T16";
+    case "normalize": return "T21";
+  }
+}
+
+/* =====================================================================
+ * 3. HELPERS
+ * ===================================================================== */
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs||{})){
+    if (v==null || v===false) continue;
+    if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k==="html") el.innerHTML = v;
+    else el.setAttribute(k, v===true?"":v);
+  }
+  for (const c of kids.flat()) if (c!=null && c!==false) el.append(c.nodeType?c:document.createTextNode(c));
+  return el;
+}
+const cvars = e => `--c-bg:var(--${e}-bg);--c-bd:var(--${e}-bd);--c-fg:var(--${e}-fg)`;
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const fmt = t => { t=Math.max(0,t||0); return Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0"); };
+const joinList = a => a.length<2 ? a.join("") : a.length===2 ? a.join(" and ") : a.slice(0,-1).join(", ")+", and "+a[a.length-1];
+const sceneOf = id => { const s = DEMO.scenes[id]; if (!s) throw new Error("unknown scene "+id); return s; };
+const present = scene => new Set(("M"+scene.elements).split(""));
+const P = {
+  input:  s     => `${DEMO.root}sim/${s}/input.wav`,
+  output: (s,t) => `${DEMO.root}sim/${s}/${t}_output.wav`,
+  target: (s,t) => `${DEMO.root}sim/${s}/${t}_target.wav`,
+};
+const ALL_SRCS = new Set();
+const addSrc = s => { if (s) ALL_SRCS.add(s); };
+const elLabel = (e, scene) => e==="E" && scene && scene.event ? scene.event.replace(/^./, c=>c.toUpperCase()) : EL_SHORT[e];
+const shortPath = s => s ? s.replace(DEMO.root,"") : "";
+
+function canonicalPrompt(task, scene){
+  const t = TASKS[task], ev = scene.event || "sound event";
+  const np = e => ({M:"the main speaker", I:"the interfering speaker", N:"the background noise", E:`the ${ev}`, R:"the reverberation"})[e];
+  switch (t.op){
+    case "remove":    return "remove " + joinList(t.els.map(np));
+    case "reduce":    return "reduce the reverberation";
+    case "enhance":   return "enhance the speech";
+    case "boost":     return task==="T17" ? "boost all speakers" : "boost " + np(t.els[0]);
+    case "normalize": return "normalize the speakers";
+  }
+}
+
+/* prompt highlighting: verb in bold, noun phrases in their element's pastel */
+const VERB_RE = /\b(get rid of|strip out|raise the volume of|increase the volume of|turn up the volume of|match the volume of|remove|erase|eliminate|delete|reduce|dampen|mitigate|attenuate|enhance|clean(?: up)?|amplify|boost|make|louder|normalize|balance)\b/i;
+function nounPatterns(scene){
+  const pats = [
+    [/\b(interfering (?:speaker|speech)|other speaker|second speaker|background speaker)\b/i, "I"],
+    [/\b(main (?:speaker|speech)|target speaker)\b/i, "M"],
+    [/\b(all (?:the )?speakers|speakers|speech|voices)\b/i, "S"],
+    [/\b(background noise|noise)\b/i, "N"],
+    [/\b(reverberation|reverb|echo)\b/i, "R"],
+    [/\b(sound events?)\b/i, "E"],
+  ];
+  if (scene && scene.event) pats.unshift([new RegExp("\\b("+esc(scene.event)+")(?: sound)?\\b","i"), "E"]);
+  return pats;
+}
+function promptNode(text, scene){
+  const pats = [[VERB_RE,"verb"], ...nounPatterns(scene)];
+  const out = h("p",{class:"prompt"}, h("span",{class:"q"},"“"));
+  let i = 0;
+  while (i < text.length){
+    let best = null;
+    for (const [re,cls] of pats){
+      const m = re.exec(text.slice(i));
+      if (m && (!best || m.index<best.idx || (m.index===best.idx && m[0].length>best.len))) best = {idx:m.index, len:m[0].length, cls};
+    }
+    if (!best){ out.append(text.slice(i)); break; }
+    if (best.idx) out.append(text.slice(i, i+best.idx));
+    const w = text.substr(i+best.idx, best.len);
+    out.append(best.cls==="verb" ? h("span",{class:"verb"},w) : h("span",{class:"np "+best.cls, style:best.cls==="S"?null:cvars(best.cls)}, w));
+    i += best.idx + best.len;
+  }
+  out.append(h("span",{class:"q"},"”"));
+  return out;
+}
+
+/* =====================================================================
+ * 4. AUDIO + SPECTROGRAM ENGINE
+ * ===================================================================== */
+let _ctx = null;
+function AC(){ if (!_ctx) _ctx = new (window.AudioContext||window.webkitAudioContext)(); return _ctx; }
+["pointerdown","touchend","click","keydown"].forEach(ev =>
+  document.addEventListener(ev, () => { if (_ctx && _ctx.state==="suspended") _ctx.resume(); }, {passive:true}));
+
+const bufCache = new Map();
+function loadBuf(src){
+  if (!src) return Promise.resolve(null);
+  if (!bufCache.has(src)){
+    bufCache.set(src, fetch(src)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(ab => new Promise((res,rej) => { const p = AC().decodeAudioData(ab, res, rej); if (p && p.then) p.then(res,rej); }))
+      .catch(() => null));
+  }
+  return bufCache.get(src);
+}
+
+/* Spectrogram on one fixed dB scale for every file, so a removed element disappears
+ * instead of being re-normalized. Tune DB_LO / DB_HI once real samples are in. */
+const SPEC_W = 720, SPEC_H = 120, NFFT = 2048, DB_LO = -105, DB_HI = -20;
+const LUT = (() => {
+  const stops = [[255,255,255],[240,243,251],[206,216,244],[157,176,231],[110,128,203],[70,82,160],[38,43,105],[18,20,58]];
+  const lut = new Uint8ClampedArray(256*3);
+  for (let i=0;i<256;i++){
+    const x = i/255*(stops.length-1), k = Math.min(stops.length-2, Math.floor(x)), f = x-k;
+    for (let c=0;c<3;c++) lut[i*3+c] = stops[k][c]*(1-f) + stops[k+1][c]*f;
+  }
+  return lut;
+})();
+function fft(re, im){
+  const n = re.length;
+  for (let i=1,j=0;i<n;i++){ let bit=n>>1; for(;j&bit;bit>>=1) j^=bit; j^=bit;
+    if (i<j){ let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; } }
+  for (let len=2; len<=n; len<<=1){
+    const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang), half=len>>1;
+    for (let i=0;i<n;i+=len){ let cr=1, ci=0;
+      for (let k=0;k<half;k++){ const a=i+k, b=a+half;
+        const tr=re[b]*cr-im[b]*ci, ti=re[b]*ci+im[b]*cr;
+        re[b]=re[a]-tr; im[b]=im[a]-ti; re[a]+=tr; im[a]+=ti;
+        const ncr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=ncr; } } }
+}
+function renderSpec(buf){
+  const W=SPEC_W, H=SPEC_H, N=NFFT, sr=buf.sampleRate;
+  let x = buf.getChannelData(0);
+  if (buf.numberOfChannels>1){ const y=new Float32Array(x.length); for (let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for (let i=0;i<y.length;i++) y[i]+=d[i]/buf.numberOfChannels; } x=y; }
+  const win = new Float32Array(N); for (let i=0;i<N;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
+  const mel = f => 2595*Math.log10(1+f/700), imel = m => 700*(10**(m/2595)-1);
+  const mMax = mel(sr/2), rowBin = new Int32Array(H+1);
+  for (let r=0;r<=H;r++) rowBin[r] = Math.min(N/2, Math.round(imel(mMax*r/H)/sr*N));
+  const cv = document.createElement("canvas"); cv.width=W; cv.height=H;
+  const g = cv.getContext("2d"), img = g.createImageData(W,H), px = img.data;
+  const re = new Float32Array(N), im = new Float32Array(N), db = new Float32Array(N/2+1), norm = N/4;
+  for (let col=0; col<W; col++){
+    const start = Math.floor((col+0.5)*x.length/W) - N/2;
+    for (let i=0;i<N;i++){ const j=start+i; re[i] = (j>=0 && j<x.length) ? x[j]*win[i] : 0; im[i]=0; }
+    fft(re, im);
+    for (let k=0;k<=N/2;k++) db[k] = 20*Math.log10(Math.hypot(re[k],im[k])/norm + 1e-12);
+    for (let r=0;r<H;r++){
+      const lo=rowBin[r], hi=Math.max(rowBin[r+1], lo+1); let v=-300;
+      for (let k=lo;k<hi && k<=N/2;k++) if (db[k]>v) v=db[k];
+      const t = Math.max(0, Math.min(1, (v-DB_LO)/(DB_HI-DB_LO)));
+      const li = Math.round(t*255)*3, o = ((H-1-r)*W+col)*4;
+      px[o]=LUT[li]; px[o+1]=LUT[li+1]; px[o+2]=LUT[li+2]; px[o+3]=255;
+    }
+  }
+  g.putImageData(img,0,0);
+  return cv;
+}
+const specCache = new Map();
+function getSpec(src){
+  if (!specCache.has(src)) specCache.set(src, loadBuf(src).then(b => b ? renderSpec(b) : null));
+  return specCache.get(src);
+}
+/* audio is fetched only when a block scrolls near the viewport */
+const lazy = new IntersectionObserver(ents => ents.forEach(e => {
+  if (!e.isIntersecting) return;
+  lazy.unobserve(e.target); const en = e.target._eng; if (en){ en.visible = true; en.ensure(); }
+}), {rootMargin:"400px 0px"});
+
+const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
+
+/* Engine: every version plays in sync and only the audible one has gain 1,
+ * so pressing play on another column switches to it at the same time position. */
+class Engine {
+  constructor(){ this.slots=[]; this.bufs={}; this.nodes=null; this.offset=0; this.playing=false; this.dur=0; this.gen=0; this.active=null; this.view=null; this.visible=false; }
+  setSlots(slots){                   // [{key, src}]
+    const was = this.playing, t = this.pos();
+    if (was){ this.stopNodes(); this.playing=false; }
+    this.gen++; this.slots = slots; this.bufs = {}; this.loaded = null;
+    slots.forEach(s => addSrc(s.src));
+    if (!slots.find(s=>s.key===this.active)) this.active = slots[0].key;
+    if (!this.visible && !was){ this.render(); return Promise.resolve(); }
+    const gen = this.gen;
+    return this.ensure().then(() => { if (gen!==this.gen) return; this.offset = Math.min(t, this.dur); if (was) this.play(this.active); else this.render(); });
+  }
+  ensure(){ if (!this.loaded) this.loaded = this._load(); return this.loaded; }
+  async _load(){
+    const gen = this.gen;
+    this.view && this.view.loading();
+    const bufs = await Promise.all(this.slots.map(s => loadBuf(s.src)));
+    if (gen!==this.gen) return;
+    this.slots.forEach((s,i) => this.bufs[s.key] = bufs[i]);
+    this.dur = Math.max(0, ...bufs.map(b => b ? b.duration : 0));
+    if (this.view) await this.view.loaded(this.slots, this.bufs, this.dur, () => gen===this.gen);
+    this.render();
+  }
+  pos(){ return this.playing ? this.offset + Math.max(0, AC().currentTime - this.startedAt) : this.offset; }
+  async play(key){
+    if (key) this.active = key;
+    this.visible = true;
+    await this.ensure(); if (!this.dur || !this.bufs[this.active]) { this.render(); return; }
+    const ctx = AC(); if (ctx.state==="suspended") await ctx.resume();
+    if (Engine.current && Engine.current!==this) Engine.current.pause();
+    Engine.current = this; Engine.last = this;
+    if (this.playing){ this.select(this.active); return; }
+    if (this.offset >= this.dur - 0.02) this.offset = 0;
+    const t0 = ctx.currentTime + 0.03; this.nodes = {};
+    for (const s of this.slots){
+      const b = this.bufs[s.key]; if (!b) continue;
+      const src = ctx.createBufferSource(); src.buffer = b;
+      const g = ctx.createGain(); g.gain.value = s.key===this.active ? 1 : 0;
+      src.connect(g).connect(ctx.destination);
+      if (this.offset < b.duration) src.start(t0, this.offset);
+      this.nodes[s.key] = {src, g};
+    }
+    this.startedAt = t0; this.playing = true;
+    const loop = () => { if (!this.playing) return;
+      if (this.pos() >= this.dur){ this.halt(); this.offset = 0; this.render(); return; }
+      this.render(); requestAnimationFrame(loop); };
+    loop();
+  }
+  select(key){
+    this.active = key;
+    if (this.nodes){ const now = AC().currentTime; for (const [k,n] of Object.entries(this.nodes)) n.g.gain.setTargetAtTime(k===key?1:0, now, 0.008); }
+    this.render();
+  }
+  stopNodes(){ if (!this.nodes) return; for (const n of Object.values(this.nodes)){ try{ n.src.stop(); }catch(e){} n.src.disconnect(); } this.nodes = null; }
+  halt(){ if (!this.playing) return; this.offset = this.pos(); this.stopNodes(); this.playing = false; if (Engine.current===this) Engine.current = null; this.render(); }
+  pause(){ this.halt(); }            // what other engines call when they take over
+  toggle(key){ if (this.playing && (!key || key===this.active)) this.pause(); else this.play(key || this.active); }
+  seek(t){ const was = this.playing; if (was){ this.stopNodes(); this.playing = false; } this.offset = Math.max(0, Math.min(t, this.dur)); if (was) this.play(this.active); else this.render(); }
+  render(){ this.view && this.view.render(this); }
+}
+Engine.current = null; Engine.last = null;
+
+/* Three-column view: Input | Output | Target, each with its own play button, one shared clock */
+class ColumnsView {
+  constructor(engine, labels, marks){
+    this.engine = engine; this.marks = marks; this.cols = {};
+    this.el = h("div",{class:"cols"});
+    for (const [key,label] of labels){
+      const pb = h("button",{class:"pb","aria-label":"Play "+label, html:ICON_PLAY, onclick:()=>{ Engine.last=engine; engine.toggle(key); }});
+      const t = h("span",{class:"col-t"},"");
+      const cv = h("canvas",{width:SPEC_W, height:SPEC_H});
+      const head = h("div",{class:"head"}), msg = h("div",{class:"msg"},"");
+      const spec = h("div",{class:"spec"}, cv, head, msg);
+      const seek = e => { const r = spec.getBoundingClientRect(); engine.seek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*engine.dur); };
+      spec.addEventListener("pointerdown", e => { Engine.last=engine; spec.setPointerCapture(e.pointerId); this._drag=true; seek(e); });
+      spec.addEventListener("pointermove", e => { if (this._drag) seek(e); });
+      spec.addEventListener("pointerup", () => this._drag=false);
+      const col = h("div",{class:"col"}, h("div",{class:"col-head"}, pb, h("span",{class:"col-lb"},label), t), spec);
+      this.cols[key] = {col, pb, t, cv, head, msg, spec};
+      this.el.append(col);
+    }
+    this.el._eng = engine; lazy.observe(this.el);
+  }
+  loading(){ for (const c of Object.values(this.cols)){ c.msg.hidden=false; c.msg.textContent="loading…"; } }
+  async loaded(slots, bufs, dur, alive){
+    await Promise.all(slots.map(async s => {
+      const c = this.cols[s.key]; if (!c) return;
+      const sp = bufs[s.key] ? await getSpec(s.src) : null;
+      if (!alive()) return;
+      const g = c.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
+      c.msg.hidden = !!sp;
+      c.msg.textContent = sp ? "" : s.src ? "pending — " + shortPath(s.src) : "not rendered for this sample";
+      c.spec.querySelectorAll(".mark").forEach(m=>m.remove());
+      if (sp && this.marks && dur) for (const m of this.marks) c.spec.insertBefore(h("div",{class:"mark",style:`left:${m.t/dur*100}%`}, h("span",{},m.label)), c.head);
+    }));
+  }
+  render(e){
+    const p = e.pos(), f = e.dur ? p/e.dur : 0;
+    const box = this.el.closest(".sample"); if (box) box.classList.toggle("active", e.playing || p>0);
+    for (const [k,c] of Object.entries(this.cols)){
+      const on = e.playing && k===e.active;
+      c.col.classList.toggle("playing", on);
+      c.pb.innerHTML = on ? ICON_PAUSE : ICON_PLAY;
+      c.head.style.left = (f*100)+"%";
+      c.t.textContent = e.dur ? ((p>0 && k===e.active) ? fmt(p)+" / " : "") + fmt(e.dur) : "";
+    }
+  }
+}
+
+/* keyboard: Space = play/pause the last-touched sample, 1/2/3 = Input/Output/Target */
+document.addEventListener("keydown", e => {
+  if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const en = Engine.last; if (!en) return;
+  if (e.code==="Space"){ e.preventDefault(); en.toggle(); }
+  else if (/^[1-9]$/.test(e.key)){ const s = en.slots[+e.key-1]; if (s) en.playing ? en.select(s.key) : en.play(s.key); en.onkey && en.onkey(s && s.key); }
+});
+
+/* =====================================================================
+ * 5. PAGE
+ * ===================================================================== */
+function sampleBlock(op, sm, index){
+  const O = OPS[op], scene = sceneOf(sm.scene), p = present(scene);
+  let sel = new Set(sm.select || (O.opts.length ? [O.opts.find(e=>p.has(e)) || O.opts[0]] : []));
+  if (!O.multi && O.opts.length) sel = new Set([O.opts[0]]);
+
+  const engine = new Engine();
+  const view = new ColumnsView(engine, [["input","Input"],["output","Output"],["target","Target"]], scene.marks);
+  engine.view = view;
+
+  const promptBox = h("div"), notice = h("p",{class:"notice",hidden:true});
+  const pills = {};
+  const optsRow = O.opts.length
+    ? h("div",{class:"opts"}, h("span",{class:"lb"}, O.multi ? "Select" : "Element"),
+        O.opts.map(e => pills[e] = h("button",{class:"pill"+(p.has(e)?"":" absent")+(O.multi?"":" fixed"), style:cvars(e),
+          title: p.has(e) ? EL_NAME[e] : EL_NAME[e]+" — not in this recording",
+          onclick: () => { if (!O.multi) return;
+            sel.has(e) ? sel.delete(e) : sel.add(e);
+            if (!sel.size) sel.add(e);
+            update(); }},
+          h("span",{class:"ck"},"✓"), h("i",{class:"dotc"}), elLabel(e, scene), p.has(e) ? null : h("span",{class:"x"},"· not in recording"))))
+    : h("div",{class:"opts"}, h("span",{class:"lb"},"Element"), h("span",{class:"none"},"none — the prompt states a goal instead of naming elements"));
+
+  const block = h("article",{class:"sample", id:`${op}-${sm.scene}`});
+  function update(){
+    const task = taskFor(op, sel), t = TASKS[task];
+    for (const [e,b] of Object.entries(pills)) b.classList.toggle("on", sel.has(e));
+    promptBox.replaceChildren(promptNode((sm.prompts||{})[task] || canonicalPrompt(task, scene), scene));
+    const missing = t.els.filter(e => !p.has(e));
+    const noop = missing.length === t.els.length;
+    const names = joinList(missing.map(e => elLabel(e,scene).toLowerCase()));
+    if (noop){
+      notice.hidden = false;
+      notice.replaceChildren(h("b",{},"No-op. "), t.op==="enhance" ? "There is nothing to remove in this recording" : `The ${names} ${missing.length>1?"are":"is"} not in this recording`, ", so the output should equal the input.");
+    } else if (missing.length && t.op!=="enhance"){
+      notice.hidden = false;
+      notice.replaceChildren(`The ${names} ${missing.length>1?"are":"is"} not in this recording — that part of the prompt should leave the audio unchanged.`);
+    } else notice.hidden = true;
+    const rendered = !sm.tasks || sm.tasks.includes(task);
+    const inp = sm.inputSrc || P.input(sm.scene);
+    const out = rendered ? ((sm.outputs||{})[task] || P.output(sm.scene, task)) : null;
+    const tgt = noop ? inp : rendered ? ((sm.targets||{})[task] || P.target(sm.scene, task)) : null;
+    block.dataset.task = task;
+    engine.setSlots([{key:"input",src:inp},{key:"output",src:out},{key:"target",src:tgt}]);
+  }
+
+  const has = [...p].sort((a,b)=>ELS.indexOf(a)-ELS.indexOf(b)).map(e => h("span",{class:"el",style:cvars(e)}, h("i",{class:"dotc"}), elLabel(e, scene)));
+  block.append(
+    h("div",{class:"s-head"}, h("span",{class:"idx"}, "Sample "+(index+1)), h("span",{class:"has"}, has)),
+    ...[optsRow, promptBox, notice, sm.note ? h("p",{class:"s-note"}, sm.note) : null, view.el].filter(Boolean));
+  update();
+  return block;
+}
+
+function opSection(op){
+  const O = OPS[op], list = DEMO.sections[op] || [];
+  return h("section",{id:op}, h("div",{class:"wrap"},
+    h("div",{class:"sec-head"}, h("h2",{}, O.label), h("p",{class:"desc"}, O.desc),
+      h("p",{class:"verbs"}, "Verbs: " + O.verbs.join(", "))),
+    list.map((sm,i) => sampleBlock(op, sm, i))));
+}
+
+/* ---- kept for later: one recording with all 21 prompts (DEMO.hero.show) ---- */
+function heroSection(){
+  const H = DEMO.hero, scene = sceneOf(H.scene), p = present(scene);
+  const engine = new Engine();
+  const view = new ColumnsView(engine, [["input","Input"],["output","Output"],["target","Target"]], scene.marks);
+  engine.view = view;
+  let op = "remove", sel = new Set(["I","N","E","R"].filter(e=>p.has(e)));
+  const promptBox = h("div"), pills = [];
+  const groups = [["remove",["I","N","E","R"],true], ["reduce",["R"],false], ["enhance",[],false], ["boost",["M","I"],true], ["normalize",["I"],false]];
+  const rows = groups.map(([g, els, multi]) => h("div",{class:"opts"}, h("span",{class:"lb"}, OPS[g].label),
+    (els.length ? els : ["_"]).map(e => { const b = h("button",{class:"pill", style:e==="_"?null:cvars(e), onclick:()=>{
+        if (op!==g){ op=g; sel=new Set(e==="_"?[]:[e]); } else if (multi){ sel.has(e)?sel.delete(e):sel.add(e); if (!sel.size) sel.add(e); }
+        update(); }}, h("span",{class:"ck"},"✓"), e==="_" ? null : h("i",{class:"dotc"}), e==="_" ? "the speech" : elLabel(e, scene)); pills.push([g,e,b]); return b; })));
+  function update(){
+    const task = taskFor(op, sel);
+    pills.forEach(([g,e,b]) => b.classList.toggle("on", g===op && (e==="_" || sel.has(e))));
+    promptBox.replaceChildren(promptNode((H.prompts||{})[task] || canonicalPrompt(task, scene), scene));
+    engine.setSlots([{key:"input",src:P.input(H.scene)},{key:"output",src:P.output(H.scene,task)},{key:"target",src:P.target(H.scene,task)}]);
+  }
+  const block = h("article",{class:"sample"}, ...rows, promptBox, view.el);
+  update();
+  return h("section",{id:"all21"}, h("div",{class:"wrap"},
+    h("div",{class:"sec-head"}, h("h2",{},"One recording, 21 prompts"),
+      h("p",{class:"desc"},"A single recording that contains every element, edited by each of the 21 prompts.")), block));
+}
+
+/* ---- real-world clips: the muted video is the clock, the selected track plays in sync ---- */
+class VideoView {
+  constructor(engine, video){ this.engine=engine; this.video=video;
+    this.cv = h("canvas",{width:SPEC_W,height:SPEC_H}); this.head=h("div",{class:"head"}); this.msg=h("div",{class:"msg"},"");
+    this.spec = h("div",{class:"spec"}, this.cv, this.head, this.msg);
+    this.spec.addEventListener("pointerdown", e => { const r=this.spec.getBoundingClientRect(); if (video.duration) video.currentTime = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*video.duration; });
+  }
+  loading(){ this.msg.hidden=false; this.msg.textContent="loading…"; }
+  async loaded(){ await this.draw(); }
+  async draw(){
+    const s = this.engine.slots.find(x=>x.key===this.engine.active);
+    const sp = s && this.engine.bufs[s.key] ? await getSpec(s.src) : null;
+    const g = this.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
+    this.msg.hidden = !!sp; this.msg.textContent = sp ? "" : "pending — " + shortPath(s && s.src);
+  }
+  render(){ const d = this.video.duration || this.engine.dur; if (d) this.head.style.left = (this.video.currentTime/d*100)+"%"; }
+}
+function realBlock(rw){
+  const base = `${DEMO.root}real/${rw.id}/`;
+  const slots = [{key:"input", label:"Original", src: rw.input || base+"input.wav"},
+    ...rw.outputs.map((o,i) => ({key:"out"+i, label: rw.outputs.length>1 ? `Remastered · ${i+1}` : "Remastered", src: o.src || `${base}out_${i+1}.wav`, prompt:o.prompt}))];
+  const vsrc = rw.video || base+"video.mp4"; addSrc(vsrc);
+  const video = h("video",{src:vsrc, controls:true, playsinline:true, preload:"metadata", poster:rw.poster||null}); video.muted = true;
+  const vmsg = h("div",{class:"msg",hidden:true});
+  video.addEventListener("error", () => { vmsg.hidden=false; vmsg.textContent = "video pending — " + shortPath(vsrc); });
+
+  const engine = new Engine(); const view = new VideoView(engine, video); engine.view = view;
+  engine.setSlots(slots.map(s => ({key:s.key, src:s.src})));
+  let syncing = false;
+  const start = async () => { if (video.paused || syncing) return; syncing = true;
+    engine.stopNodes(); engine.playing = false; engine.offset = video.currentTime; await engine.play(); syncing = false; };
+  video.addEventListener("play", start); video.addEventListener("playing", start);
+  ["pause","waiting","seeking","ended"].forEach(ev => video.addEventListener(ev, () => engine.halt()));
+  video.addEventListener("seeked", () => { if (!video.paused) start(); view.render(); });
+  video.addEventListener("timeupdate", () => { view.render();
+    if (engine.playing && Math.abs(engine.pos() - video.currentTime) > 0.12) start(); });
+  video.addEventListener("volumechange", () => { if (!video.muted) video.muted = true; });   // audio comes from the tracks
+  engine.pause  = () => { engine.halt(); if (!video.paused) video.pause(); };                  // another sample took over
+  engine.toggle = () => video.paused ? video.play() : video.pause();
+  engine.onkey  = key => choose(key);
+
+  const rows = slots.map((s,i) => h("button",{class:"vrow"+(i===0?" on":""), onclick:()=>choose(s.key)},
+    h("span",{class:"rd"}), h("span",{}, h("span",{class:"k"}, s.label),
+      s.prompt ? promptNode(s.prompt, {}) : h("p",{class:"prompt",style:"color:var(--muted)"}, "as recorded"))));
+  function choose(key){ if (!key) return; engine.select(key); rows.forEach((r,i)=>r.classList.toggle("on", slots[i].key===key)); view.draw(); Engine.last = engine; }
+  const vbox = h("div",{class:"vbox"}, video, vmsg);
+  vbox.addEventListener("pointerdown", () => Engine.last = engine);
+  vbox._eng = engine; lazy.observe(vbox);
+  return h("article",{class:"rw", id:"rw-"+rw.id}, vbox,
+    h("div",{}, h("h3",{}, rw.title||rw.id), h("p",{class:"src"}, rw.source||""), h("div",{class:"vlist"}, rows), view.spec));
+}
+
+const EL_DESC = {
+  M:"the talker the recording is about",
+  I:"a second, more distant talker",
+  N:"ambience that spans the whole recording",
+  E:"a short sound, such as a door slam",
+  R:"the room's reflections on every source",
+};
+function guideSection(){
+  return h("section",{class:"guide", id:"guide"}, h("div",{class:"wrap"},
+    h("h2",{},"How to listen"),
+    h("div",{class:"box"},
+      h("div",{}, h("h3",{},"Elements of a speaking scene"),
+        h("ul",{}, ELS.map(e => h("li",{style:cvars(e)}, h("i",{class:"dotc"}), h("span",{}, h("b",{}, EL_NAME[e]), " — ", EL_DESC[e]))))),
+      h("div",{}, h("h3",{},"Using a sample"),
+        h("ol",{},
+          h("li",{}, h("span",{},"Choose elements under a sample. The prompt is rebuilt from your choice, and the output changes with it.")),
+          h("li",{}, h("span",{},"Press play on ", h("b",{},"Input"), ", ", h("b",{},"Output"), " or ", h("b",{},"Target"), ". Pressing another column while playing switches to it at the same time position.")),
+          h("li",{}, h("span",{},"A dashed option is an element the recording does not contain. Choosing it is a ", h("b",{},"no-op"), ": the output should equal the input."))),
+        h("p",{class:"tip"}, "Headphones recommended · ", h("kbd",{},"Space"), " play / pause · ", h("kbd",{},"1"), " ", h("kbd",{},"2"), " ", h("kbd",{},"3"), " switch column · click a spectrogram to seek")))));
+}
+
+function render(){
+  const M = DEMO.meta, app = document.getElementById("app");
+  const btns = h("div",{class:"btns"}, (M.links||[]).map(l => h("a",{href:l.href, target:l.href && l.href!=="#" ? "_blank" : null, rel:"noopener"},
+    l.icon ? h("span",{class:"ic","aria-hidden":"true"}, l.icon) : null, l.label)));
+  const header = h("header",{id:"top"}, h("div",{class:"wrap"},
+    h("h1",{}, M.title), h("div",{class:"sub"}, M.subtitle),
+    h("div",{class:"authors"}, M.authors), h("div",{class:"aff"}, [M.affiliation, M.venue].filter(Boolean).join(" · ")),
+    btns, h("div",{class:"abstract"}, h("h2",{},"Abstract"), h("p",{}, M.intro))));
+
+  const secs = [["guide","How to listen", guideSection()]];
+  if (DEMO.hero && DEMO.hero.show) secs.push(["all21","21 prompts", heroSection()]);
+  for (const op of OP_ORDER) if ((DEMO.sections[op]||[]).length) secs.push([op, OPS[op].label, opSection(op)]);
+  if ((DEMO.realworld||[]).length) secs.push(["real","Real-world", h("section",{id:"real"}, h("div",{class:"wrap"},
+    h("div",{class:"sec-head"}, h("h2",{},"Real-world recordings"),
+      h("p",{class:"desc"},"In-the-wild clips with no reference target. The video plays muted and the selected audio plays in sync with it; switch versions while it plays.")),
+    DEMO.realworld.map(realBlock)))]);
+
+  const nav = h("nav",{}, h("div",{class:"wrap"}, secs.map(([id,label]) => h("a",{href:"#"+id,"data-id":id}, label))));
+  const footer = h("footer",{}, h("div",{class:"wrap"}, h("h3",{},"Citation"), h("pre",{class:"bib"}, M.bibtex||"")));
+  app.append(header, nav, ...secs.map(s=>s[2]), footer);
+
+  const as = [...nav.querySelectorAll("a")], bar = nav.firstChild;
+  const spy = new IntersectionObserver(ents => ents.forEach(e => { if (!e.isIntersecting) return;
+    as.forEach(a => a.classList.toggle("on", a.dataset.id===e.target.id));
+    const a = as.find(a=>a.dataset.id===e.target.id); if (a) bar.scrollTo({left:a.offsetLeft - bar.clientWidth/2 + a.offsetWidth/2, behavior:"smooth"}); }),
+    {rootMargin:"-45% 0px -50% 0px"});
+  secs.forEach(([id]) => spy.observe(document.getElementById(id)));
+
+  if (new URLSearchParams(location.search).has("check")) runCheck();
+}
+
+/* ?check — lists every expected file for every selectable prompt of every sample */
+async function runCheck(){
+  for (const op of OP_ORDER) for (const sm of (DEMO.sections[op]||[])){
+    const p = present(sceneOf(sm.scene));
+    addSrc(sm.inputSrc || P.input(sm.scene));
+    for (const [task,t] of Object.entries(TASKS)){
+      if (t.op!==op || (sm.tasks && !sm.tasks.includes(task))) continue;
+      addSrc((sm.outputs||{})[task] || P.output(sm.scene, task));
+      if (t.els.some(e => p.has(e))) addSrc((sm.targets||{})[task] || P.target(sm.scene, task));
+    }
+  }
+  const box = h("div",{id:"check"}, "checking "+ALL_SRCS.size+" files…"); document.body.append(box);
+  const missing = [];
+  await Promise.all([...ALL_SRCS].map(async s => { try{ const r = await fetch(s,{method:"HEAD"}); if (!r.ok) missing.push(s); }catch(e){ missing.push(s); } }));
+  missing.sort();
+  box.replaceChildren(h("button",{style:"float:right;text-decoration:underline",onclick:()=>box.remove()},"close"),
+    h("b",{}, `${ALL_SRCS.size-missing.length}/${ALL_SRCS.size} files found`), h("br"), ...missing.flatMap(m=>[m, h("br")]));
+}
+
+render();
+</script>
+</body>
+</html>

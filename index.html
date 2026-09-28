@@ -37,8 +37,13 @@ header h1{font-size:clamp(28px,4vw,40px)}
 header .sub{font-size:clamp(16px,2vw,19px);color:var(--muted);margin-top:8px}
 header .authors{margin-top:22px}
 header .aff{color:var(--muted);font-size:14px}
-header .authors sup,header .aff sup{font-size:.68em;margin-left:1px}
-header .aff .af + .af{margin-left:16px}
+header .authors .au{white-space:nowrap}
+header .authors sup,header .aff sup{font-size:.68em;margin-left:1px;line-height:0}
+header .aff .af{display:inline-block}
+header .aff .af + .af{margin-left:18px}
+.abstract .terms{margin-top:12px;font-size:13.5px;color:var(--muted)}
+.abstract .terms b{color:var(--ink2);font-weight:600}
+header .aff + .aff{margin-top:2px}
 header .btns{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 header .btns a{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px;border-radius:999px;border:1px solid var(--brand-bd);background:var(--brand-bg);color:var(--brand-dk);font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
 header .btns a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
@@ -180,19 +185,25 @@ const DEMO = {
   meta: {
     title: "Speech Remastering",
     subtitle: "Prompt-driven revision of a recorded speaking scene",
+    /* aff = 1-based index into affiliations; corr:true adds corrMark; sym adds an extra footnote mark */
     authors: [
-      {name:"Myungjin Lee",   aff:[1,2]},
-      {name:"Youna Ji",   aff:[1]},
-      {name:"Jiyoung Lee", aff:[2]},
-      {name:"Min-Seok Choi",  aff:[1]}, corr:true
-      {name:"Soo-Whan Chung",  aff:[1], corr:true
-    ]"Author One, Author Two, Author Three",
-    affiliation: ["NAVER Cloud Corporation", "Division of Artificial Interlligence \& Software, Ewha Womans University"]
-    corrNote: "† Corresponding author"
-    venue: "Under Review",
+      {name:"Myungjin Lee",   aff:[1,2], sym:"*"},
+      {name:"Youna Ji",       aff:[1]},
+      {name:"Jiyoung Lee",    aff:[2]},
+      {name:"Min-Seok Choi",  aff:[1], corr:true},
+      {name:"Soo-Whan Chung", aff:[1], corr:true},
+    ],
+    affiliations: [
+      "Naver Cloud Corporation, South Korea",
+      "Division of Artificial Intelligence & Software, Ewha Womans University, South Korea",
+    ],
+    corrMark: "†",
+    footnotes: [ {sym:"*", text:"Work done during internship at Naver Cloud"}, {sym:"†", text:"Corresponding authors"} ],
+    venue: "Submitted to ICASSP 2027",
     links: [ {label:"Paper", icon:"📄", href:"#"}, {label:"Code", icon:"💻", href:"#"} ],
     intro: "We propose a novel speech processing task, speech remastering, which revises the acoustic elements of a recorded speaking scene under the control of a text prompt. A recording of such a scene captures not only the speech but also various other acoustic elements. Conventional speech enhancement aims to recover the speech in its clean form and remove everything else. However, which elements a user wants to keep or remove differs from case to case. Speech remastering instead lets the prompt specify which operation is applied to which elements, rather than acting on the same elements in every recording. We implement the task with a single prompt-conditioned model. Experiments show that the model follows prompted operations, including requests beyond a fixed enhancement target, while leaving untargeted elements intact.",
-    bibtex: "@inproceedings{srm2027,\n  title     = {TBD},\n  author    = {TBD},\n  booktitle = {ICASSP},\n  year      = {2027}\n}",
+    indexTerms: "Speech remastering, speech enhancement, speaking scene, prompt-based speech processing",
+    bibtex: "@inproceedings{srm2027,\n  title     = {TBD},\n  author    = {Lee, Myungjin and Ji, Youna and Lee, Jiyoung and Choi, Min-Seok and Chung, Soo-Whan},\n  booktitle = {ICASSP},\n  year      = {2027}\n}",
   },
   root: "audio/",
 
@@ -704,17 +715,30 @@ function guideSection(){
         h("p",{class:"tip"}, "Headphones recommended · ", h("kbd",{},"Space"), " play / pause · ", h("kbd",{},"1"), " ", h("kbd",{},"2"), " ", h("kbd",{},"3"), " switch column · click a spectrogram to seek")))));
 }
 
+/* authors: array of {name, aff:[1,2], corr} (a plain string also works) */
+function authorLine(M){
+  if (!Array.isArray(M.authors)) return h("div",{class:"authors"}, M.authors||"");
+  const mark = M.corrMark || "†";
+  return h("div",{class:"authors"}, M.authors.flatMap((a,i) => [i ? ", " : null,
+    h("span",{class:"au"}, a.name, h("sup",{}, (a.aff||[]).join(",") + (a.corr ? mark : "") + (a.sym||"")))]));
+}
+function affLine(M){
+  const list = M.affiliations || (M.affiliation ? [M.affiliation] : []);
+  const numbered = list.length > 1;
+  return h("div",{class:"aff"}, list.map((af,i) => h("span",{class:"af"}, numbered ? h("sup",{}, String(i+1)) : null, af)));
+}
+
 function render(){
   const M = DEMO.meta, app = document.getElementById("app");
   const btns = h("div",{class:"btns"}, (M.links||[]).map(l => h("a",{href:l.href, target:l.href && l.href!=="#" ? "_blank" : null, rel:"noopener"},
     l.icon ? h("span",{class:"ic","aria-hidden":"true"}, l.icon) : null, l.label)));
   const header = h("header",{id:"top"}, h("div",{class:"wrap"},
     h("h1",{}, M.title), h("div",{class:"sub"}, M.subtitle),
-    h("div",{class:"authors"}, M.authors.flatMap((a,i) => [i ? ", " : null,
-      h("span",{}, a.name, h("sup",{}, (a.aff||[]).join(",") + (a.corr ? "†" : "")))])),
-    h("div",{class:"aff"}, M.affiliations.map((af,i) => h("span",{class:"af"}, h("sup",{}, i+1), af))),
-    h("div",{class:"aff"}, [M.corrNote, M.venue].filter(Boolean).join(" · ")),,
-    btns, h("div",{class:"abstract"}, h("h2",{},"Abstract"), h("p",{}, M.intro))));
+    authorLine(M), affLine(M),
+    M.footnotes ? h("div",{class:"aff"}, M.footnotes.map((f,i) => h("span",{class:"af"}, h("sup",{}, f.sym), " "+f.text))) : null,
+    M.venue ? h("div",{class:"aff"}, M.venue) : null,
+    btns, h("div",{class:"abstract"}, h("h2",{},"Abstract"), h("p",{}, M.intro),
+      M.indexTerms ? h("p",{class:"terms"}, h("b",{},"Index Terms — "), M.indexTerms) : null)));
 
   const secs = [["guide","How to listen", guideSection()]];
   if (DEMO.hero && DEMO.hero.show) secs.push(["all21","21 prompts", heroSection()]);

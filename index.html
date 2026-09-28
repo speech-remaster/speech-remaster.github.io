@@ -39,11 +39,13 @@ header .authors{margin-top:22px}
 header .aff{color:var(--muted);font-size:14px}
 header .authors .au{white-space:nowrap}
 header .authors sup,header .aff sup{font-size:.68em;margin-left:1px;line-height:0}
-header .aff .af{display:inline-block}
-header .aff .af + .af{margin-left:18px}
+header .affs{margin-top:4px;line-height:1.55}
+header .affs .af{display:block}
+header .notes{margin-top:12px;color:var(--faint);font-size:12.5px}
+header .notes .af{display:inline-block}
+header .notes .af + .af{margin-left:16px}
 .abstract .terms{margin-top:12px;font-size:13.5px;color:var(--muted)}
 .abstract .terms b{color:var(--ink2);font-weight:600}
-header .aff + .aff{margin-top:2px}
 header .btns{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 header .btns a{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px;border-radius:999px;border:1px solid var(--brand-bd);background:var(--brand-bg);color:var(--brand-dk);font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
 header .btns a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
@@ -52,9 +54,10 @@ header .btns .ic{font-size:16px;line-height:1}
 .abstract h2,.guide h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .abstract p{margin:0;color:var(--ink2)}
 section.guide{padding:40px 0 0}
-.guide .box{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:24px 28px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px}
-@media (max-width:820px){.guide .box{grid-template-columns:1fr;padding:20px}}
-.guide h3{font-size:15px;margin-bottom:12px}
+.guide .box{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.guide .pane{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:22px 26px}
+@media (max-width:820px){.guide .box{grid-template-columns:1fr}.guide .pane{padding:18px 20px}}
+.guide h3{font-size:16px;margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid var(--line2)}
 .guide ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .guide li{display:grid;grid-template-columns:14px 1fr;gap:10px;align-items:baseline;font-size:14px;color:var(--ink2)}
 .guide li .dotc{position:relative;top:1px}
@@ -62,7 +65,6 @@ section.guide{padding:40px 0 0}
 .guide ol{margin:0;padding:0;list-style:none;counter-reset:st;display:grid;gap:10px}
 .guide ol li{grid-template-columns:24px 1fr;counter-increment:st}
 .guide ol li::before{content:counter(st);width:22px;height:22px;border-radius:50%;background:var(--brand-bg);border:1px solid var(--brand-bd);color:var(--brand-dk);font-size:12px;font-weight:700;display:grid;place-items:center}
-.guide .tip{margin:14px 0 0;font-size:13px;color:var(--muted)}
 kbd{font:600 11px ui-monospace,Menlo,monospace;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:#fff;color:var(--ink)}
 .el{display:inline-flex;align-items:center;gap:6px}
 .dotc{width:9px;height:9px;border-radius:50%;background:color-mix(in srgb,var(--c-bd) 55%,var(--c-fg));display:inline-block;flex:none}
@@ -199,7 +201,7 @@ const DEMO = {
     ],
     corrMark: "†",
     footnotes: [ {sym:"*", text:"Work done during internship at Naver Cloud"}, {sym:"†", text:"Corresponding authors"} ],
-    venue: "Submitted to ICASSP 2027",
+    venue: "",   // e.g. "Accepted to ICASSP 2027" — empty hides the line
     links: [ {label:"Paper", icon:"📄", href:"#"}, {label:"Code", icon:"💻", href:"#"} ],
     intro: "We propose a novel speech processing task, speech remastering, which revises the acoustic elements of a recorded speaking scene under the control of a text prompt. A recording of such a scene captures not only the speech but also various other acoustic elements. Conventional speech enhancement aims to recover the speech in its clean form and remove everything else. However, which elements a user wants to keep or remove differs from case to case. Speech remastering instead lets the prompt specify which operation is applied to which elements, rather than acting on the same elements in every recording. We implement the task with a single prompt-conditioned model. Experiments show that the model follows prompted operations, including requests beyond a fixed enhancement target, while leaving untargeted elements intact.",
     indexTerms: "Speech remastering, speech enhancement, speaking scene, prompt-based speech processing",
@@ -705,14 +707,13 @@ function guideSection(){
   return h("section",{class:"guide", id:"guide"}, h("div",{class:"wrap"},
     h("h2",{},"How to listen"),
     h("div",{class:"box"},
-      h("div",{}, h("h3",{},"Elements of a speaking scene"),
+      h("div",{class:"pane"}, h("h3",{},"Elements of a speaking scene"),
         h("ul",{}, ELS.map(e => h("li",{style:cvars(e)}, h("i",{class:"dotc"}), h("span",{}, h("b",{}, EL_NAME[e]), " — ", EL_DESC[e]))))),
-      h("div",{}, h("h3",{},"Using a sample"),
+      h("div",{class:"pane"}, h("h3",{},"Using a sample"),
         h("ol",{},
           h("li",{}, h("span",{},"Choose elements under a sample. The prompt is rebuilt from your choice, and the output changes with it.")),
           h("li",{}, h("span",{},"Press play on ", h("b",{},"Input"), ", ", h("b",{},"Output"), " or ", h("b",{},"Target"), ". Pressing another column while playing switches to it at the same time position.")),
-          h("li",{}, h("span",{},"A dashed option is an element the recording does not contain. Choosing it is a ", h("b",{},"no-op"), ": the output should equal the input."))),
-        h("p",{class:"tip"}, "Headphones recommended · ", h("kbd",{},"Space"), " play / pause · ", h("kbd",{},"1"), " ", h("kbd",{},"2"), " ", h("kbd",{},"3"), " switch column · click a spectrogram to seek")))));
+          h("li",{}, h("span",{},"A dashed option is an element the recording does not contain. Choosing it is a ", h("b",{},"no-op"), ": the output should equal the input.")))))));
 }
 
 /* authors: array of {name, aff:[1,2], corr} (a plain string also works) */
@@ -725,7 +726,7 @@ function authorLine(M){
 function affLine(M){
   const list = M.affiliations || (M.affiliation ? [M.affiliation] : []);
   const numbered = list.length > 1;
-  return h("div",{class:"aff"}, list.map((af,i) => h("span",{class:"af"}, numbered ? h("sup",{}, String(i+1)) : null, af)));
+  return h("div",{class:"aff affs"}, list.map((af,i) => h("span",{class:"af"}, numbered ? h("sup",{}, String(i+1)) : null, af)));
 }
 
 function render(){
@@ -735,7 +736,7 @@ function render(){
   const header = h("header",{id:"top"}, h("div",{class:"wrap"},
     h("h1",{}, M.title), h("div",{class:"sub"}, M.subtitle),
     authorLine(M), affLine(M),
-    M.footnotes ? h("div",{class:"aff"}, M.footnotes.map((f,i) => h("span",{class:"af"}, h("sup",{}, f.sym), " "+f.text))) : null,
+    M.footnotes ? h("div",{class:"notes"}, M.footnotes.map((f,i) => h("span",{class:"af"}, h("sup",{}, f.sym), " "+f.text))) : null,
     M.venue ? h("div",{class:"aff"}, M.venue) : null,
     btns, h("div",{class:"abstract"}, h("h2",{},"Abstract"), h("p",{}, M.intro),
       M.indexTerms ? h("p",{class:"terms"}, h("b",{},"Index Terms — "), M.indexTerms) : null)));

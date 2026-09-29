@@ -132,23 +132,27 @@ section{padding:56px 0 8px}
 .spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(31,35,40,.35);pointer-events:none}
 .spec .mark span{position:absolute;top:4px;left:4px;font-size:10.5px;color:var(--ink2);background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;white-space:nowrap}
 
-/* real-world: one video, one spectrogram row per version underneath (same time axis) */
-.rw{border-top:1px solid var(--line);padding:26px 0 30px;margin-top:22px;max-width:780px}
+/* real-world: video on the left, one row per version on the right (play + prompt + spectrogram),
+   the right column stretched to the video's height; stacks on narrow screens */
+.rw{border-top:1px solid var(--line);padding:26px 0 30px;margin-top:22px;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);grid-template-areas:"title title" "video tracks";gap:0 24px;align-items:stretch}
+.rw .rw-title{grid-area:title;margin-bottom:14px}
 .rw h3{font-size:17px}
-.rw .src{font-size:13px;color:var(--muted);margin:2px 0 14px}
-.vbox{position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9}
+.rw .src{font-size:13px;color:var(--muted);margin:2px 0 0}
+.vbox{grid-area:video;align-self:start;position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9}
 .vbox video{width:100%;height:100%;display:block;object-fit:contain}
 .vbox .msg{position:absolute;inset:0;display:grid;place-items:center;color:#9aa1a9;font-size:12.5px;text-align:center;padding:0 16px;pointer-events:none}
-.trks{display:grid;gap:14px;margin-top:16px}
-.trk-head{display:flex;align-items:center;gap:10px;margin-bottom:7px;min-width:0}
-.trk-head .prompt{font-size:15px;margin:0;min-width:0}
-.trk-head .asrec{font-size:14px;color:var(--faint)}
-.trk .spec{height:84px}
+.trks{grid-area:tracks;display:flex;flex-direction:column;gap:14px;min-height:0}
+.trk{flex:1 1 auto;display:flex;flex-direction:column}
+.trk-head{display:flex;align-items:center;gap:6px 10px;margin-bottom:8px;flex-wrap:wrap}
+.trk-head .pb{width:28px;height:28px}
+.trk-head .prompt{font-size:14px;margin:0;flex-basis:100%;order:3;line-height:1.35}
+.trk-head .asrec{font-size:13px;color:var(--faint)}
+.trk .spec{flex:1 1 auto;height:auto;min-height:46px}
 .trk.on .spec{border-color:var(--brand)}
 .trk.on .col-lb{color:var(--ink)}
 .trk.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
 .rw .spec .head{opacity:.85}
-@media (max-width:600px){.trk-head{flex-wrap:wrap}.trk-head .prompt{flex-basis:100%;order:3}}
+@media (max-width:860px){.rw{grid-template-columns:1fr;grid-template-areas:"title" "video" "tracks";gap:0}.trks{margin-top:16px;gap:16px}.trk{flex:none}.trk .spec{flex:none;height:84px}}
 
 footer{padding:56px 0 72px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:56px}
 footer h3{font-size:15px;color:var(--ink);margin-bottom:10px}
@@ -658,7 +662,7 @@ class TracksView {
         onPick(s.key, false); });
       const row = h("div",{class:"trk"},
         h("div",{class:"trk-head"}, pb, h("span",{class:"col-lb"}, s.label),
-          s.prompt ? promptNode(s.prompt, {}) : h("span",{class:"asrec"},"as recorded"), t),
+          s.prompt ? null : h("span",{class:"asrec"},"· as recorded"), t, s.prompt ? promptNode(s.prompt, {}) : null),
         spec);
       this.rows[s.key] = {row, pb, t, cv, head, msg, src:s.src};
       this.el.append(row);
@@ -722,7 +726,7 @@ function realBlock(rw){
   vbox.addEventListener("pointerdown", () => Engine.last = engine);
   view.el._eng = engine; lazy.observe(view.el);
   return h("article",{class:"rw", id:"rw-"+rw.id},
-    h("h3",{}, rw.title||rw.id), h("p",{class:"src"}, rw.source||""), vbox, view.el);
+    h("div",{class:"rw-title"}, h("h3",{}, rw.title||rw.id), rw.source ? h("p",{class:"src"}, rw.source) : null), vbox, view.el);
 }
 
 const EL_DESC = {
@@ -775,7 +779,7 @@ function render(){
   for (const op of OP_ORDER) if ((DEMO.sections[op]||[]).length) secs.push([op, OPS[op].label, opSection(op)]);
   if ((DEMO.realworld||[]).length) secs.push(["real","Real-world", h("section",{id:"real"}, h("div",{class:"wrap"},
     h("div",{class:"sec-head"}, h("h2",{},"Real-world recordings"),
-      h("p",{class:"desc"},"In-the-wild clips with no reference target. The video is the same for every version; only the audio changes. Each version has its own spectrogram under the video on the same time axis — press play on a row to hear it in sync with the picture, and switch rows while it plays.")),
+      h("p",{class:"desc"},"In-the-wild clips with no reference target. The video is the same for every version; only the audio changes. Press play on a version to hear it in sync with the picture, and switch versions while it plays.")),
     DEMO.realworld.map(realBlock)))]);
 
   const nav = h("nav",{}, h("div",{class:"wrap"}, secs.map(([id,label]) => h("a",{href:"#"+id,"data-id":id}, label))));

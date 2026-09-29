@@ -132,25 +132,23 @@ section{padding:56px 0 8px}
 .spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(31,35,40,.35);pointer-events:none}
 .spec .mark span{position:absolute;top:4px;left:4px;font-size:10.5px;color:var(--ink2);background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;white-space:nowrap}
 
-/* real-world */
-.rw{border-top:1px solid var(--line);padding:26px 0 30px;margin-top:22px;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:24px}
-@media (max-width:860px){.rw{grid-template-columns:1fr}}
+/* real-world: one video, one spectrogram row per version underneath (same time axis) */
+.rw{border-top:1px solid var(--line);padding:26px 0 30px;margin-top:22px;max-width:780px}
+.rw h3{font-size:17px}
+.rw .src{font-size:13px;color:var(--muted);margin:2px 0 14px}
 .vbox{position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9}
 .vbox video{width:100%;height:100%;display:block;object-fit:contain}
 .vbox .msg{position:absolute;inset:0;display:grid;place-items:center;color:#9aa1a9;font-size:12.5px;text-align:center;padding:0 16px;pointer-events:none}
-.rw h3{font-size:17px}
-.rw .src{font-size:13px;color:var(--muted);margin:2px 0 14px}
-.vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.vrow{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:12px 14px;border-top:1px solid var(--line);width:100%}
-.vrow:first-child{border-top:0}
-.vrow:hover{background:var(--soft)}
-.vrow .rd{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--line2);flex:none;margin-top:4px}
-.vrow.on{background:var(--brand-bg)}
-.vrow.on .rd{border:4.5px solid var(--brand)}
-.vrow .k{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.vrow .prompt{font-size:15.5px;margin:2px 0 0}
-.rw .spec{height:84px;margin-top:12px}
-.rw .spec .head{opacity:.8}
+.trks{display:grid;gap:14px;margin-top:16px}
+.trk-head{display:flex;align-items:center;gap:10px;margin-bottom:7px;min-width:0}
+.trk-head .prompt{font-size:15px;margin:0;min-width:0}
+.trk-head .asrec{font-size:14px;color:var(--faint)}
+.trk .spec{height:84px}
+.trk.on .spec{border-color:var(--brand)}
+.trk.on .col-lb{color:var(--ink)}
+.trk.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
+.rw .spec .head{opacity:.85}
+@media (max-width:600px){.trk-head{flex-wrap:wrap}.trk-head .prompt{flex-basis:100%;order:3}}
 
 footer{padding:56px 0 72px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:56px}
 footer h3{font-size:15px;color:var(--ink);margin-bottom:10px}
@@ -186,7 +184,7 @@ pre.bib{background:var(--soft);border-radius:8px;padding:14px 16px;overflow-x:au
 const DEMO = {
   meta: {
     title: "Speech Remastering",
-    subtitle: "Text Prompt-based Control of Speaking Scenes",
+    subtitle: "Prompt-driven revision of a recorded speaking scene",
     /* aff = 1-based index into affiliations; corr:true adds corrMark; sym adds an extra footnote mark */
     authors: [
       {name:"Myungjin Lee",   aff:[1,2], sym:"*"},
@@ -644,56 +642,87 @@ function heroSection(){
       h("p",{class:"desc"},"A single recording that contains every element, edited by each of the 21 prompts.")), block));
 }
 
-/* ---- real-world clips: the muted video is the clock, the selected track plays in sync ---- */
-class VideoView {
-  constructor(engine, video){ this.engine=engine; this.video=video;
-    this.cv = h("canvas",{width:SPEC_W,height:SPEC_H}); this.head=h("div",{class:"head"}); this.msg=h("div",{class:"msg"},"");
-    this.spec = h("div",{class:"spec"}, this.cv, this.head, this.msg);
-    this.spec.addEventListener("pointerdown", e => { const r=this.spec.getBoundingClientRect(); if (video.duration) video.currentTime = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*video.duration; });
+/* ---- real-world clips: the muted video is the clock; every version gets its own
+ *      spectrogram row under the video, on the same time axis, with one shared playhead ---- */
+class TracksView {
+  constructor(engine, video, slots, onPick){
+    this.engine = engine; this.video = video; this.rows = {};
+    this.el = h("div",{class:"trks"});
+    for (const s of slots){
+      const pb = h("button",{class:"pb","aria-label":"Play "+s.label, html:ICON_PLAY, onclick:()=>onPick(s.key, true)});
+      const t = h("span",{class:"col-t"},"");
+      const cv = h("canvas",{width:SPEC_W,height:SPEC_H}), head = h("div",{class:"head"}), msg = h("div",{class:"msg"},"");
+      const spec = h("div",{class:"spec"}, cv, head, msg);
+      spec.addEventListener("pointerdown", e => { const r = spec.getBoundingClientRect();
+        if (video.duration) video.currentTime = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*video.duration;
+        onPick(s.key, false); });
+      const row = h("div",{class:"trk"},
+        h("div",{class:"trk-head"}, pb, h("span",{class:"col-lb"}, s.label),
+          s.prompt ? promptNode(s.prompt, {}) : h("span",{class:"asrec"},"as recorded"), t),
+        spec);
+      this.rows[s.key] = {row, pb, t, cv, head, msg, src:s.src};
+      this.el.append(row);
+    }
   }
-  loading(){ this.msg.hidden=false; this.msg.textContent="loading…"; }
-  async loaded(){ await this.draw(); }
-  async draw(){
-    const s = this.engine.slots.find(x=>x.key===this.engine.active);
-    const sp = s && this.engine.bufs[s.key] ? await getSpec(s.src) : null;
-    const g = this.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
-    this.msg.hidden = !!sp; this.msg.textContent = sp ? "" : "pending — " + shortPath(s && s.src);
+  loading(){ for (const r of Object.values(this.rows)){ r.msg.hidden=false; r.msg.textContent="loading…"; } }
+  async loaded(slots, bufs, dur, alive){
+    await Promise.all(slots.map(async s => {
+      const r = this.rows[s.key]; if (!r) return;
+      const sp = bufs[s.key] ? await getSpec(s.src) : null; if (!alive()) return;
+      const g = r.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
+      r.msg.hidden = !!sp; r.msg.textContent = sp ? "" : "pending — " + shortPath(s.src);
+    }));
   }
-  render(){ const d = this.video.duration || this.engine.dur; if (d) this.head.style.left = (this.video.currentTime/d*100)+"%"; }
+  render(){
+    const e = this.engine, v = this.video, d = v.duration || e.dur, playing = !v.paused;
+    for (const [k,r] of Object.entries(this.rows)){
+      const on = k===e.active;
+      r.row.classList.toggle("on", on);
+      r.row.classList.toggle("playing", on && playing);
+      r.pb.innerHTML = on && playing ? ICON_PAUSE : ICON_PLAY;
+      if (d) r.head.style.left = (v.currentTime/d*100)+"%";
+      r.t.textContent = e.dur ? (on && v.currentTime>0 ? fmt(v.currentTime)+" / " : "") + fmt(e.dur) : "";
+    }
+  }
 }
 function realBlock(rw){
   const base = `${DEMO.root}real/${rw.id}/`;
-  const slots = [{key:"input", label:"Original", src: rw.input || base+"input.wav"},
-    ...rw.outputs.map((o,i) => ({key:"out"+i, label: rw.outputs.length>1 ? `Remastered · ${i+1}` : "Remastered", src: o.src || `${base}out_${i+1}.wav`, prompt:o.prompt}))];
+  const many = rw.outputs.length > 1;
+  const slots = [{key:"input", label:"Input", src: rw.input || base+"input.wav"},
+    ...rw.outputs.map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output", src: o.src || `${base}out_${i+1}.wav`, prompt:o.prompt}))];
   const vsrc = rw.video || base+"video.mp4"; addSrc(vsrc);
   const video = h("video",{src:vsrc, controls:true, playsinline:true, preload:"metadata", poster:rw.poster||null}); video.muted = true;
   const vmsg = h("div",{class:"msg",hidden:true});
   video.addEventListener("error", () => { vmsg.hidden=false; vmsg.textContent = "video pending — " + shortPath(vsrc); });
 
-  const engine = new Engine(); const view = new VideoView(engine, video); engine.view = view;
+  const engine = new Engine();
+  const view = new TracksView(engine, video, slots, pick); engine.view = view;
   engine.setSlots(slots.map(s => ({key:s.key, src:s.src})));
   let syncing = false;
   const start = async () => { if (video.paused || syncing) return; syncing = true;
-    engine.stopNodes(); engine.playing = false; engine.offset = video.currentTime; await engine.play(); syncing = false; };
+    engine.stopNodes(); engine.playing = false; engine.offset = video.currentTime; await engine.play(); syncing = false; view.render(); };
   video.addEventListener("play", start); video.addEventListener("playing", start);
-  ["pause","waiting","seeking","ended"].forEach(ev => video.addEventListener(ev, () => engine.halt()));
+  ["pause","waiting","seeking","ended"].forEach(ev => video.addEventListener(ev, () => { engine.halt(); view.render(); }));
   video.addEventListener("seeked", () => { if (!video.paused) start(); view.render(); });
   video.addEventListener("timeupdate", () => { view.render();
     if (engine.playing && Math.abs(engine.pos() - video.currentTime) > 0.12) start(); });
   video.addEventListener("volumechange", () => { if (!video.muted) video.muted = true; });   // audio comes from the tracks
   engine.pause  = () => { engine.halt(); if (!video.paused) video.pause(); };                  // another sample took over
   engine.toggle = () => video.paused ? video.play() : video.pause();
-  engine.onkey  = key => choose(key);
+  engine.onkey  = key => pick(key, false);
 
-  const rows = slots.map((s,i) => h("button",{class:"vrow"+(i===0?" on":""), onclick:()=>choose(s.key)},
-    h("span",{class:"rd"}), h("span",{}, h("span",{class:"k"}, s.label),
-      s.prompt ? promptNode(s.prompt, {}) : h("p",{class:"prompt",style:"color:var(--muted)"}, "as recorded"))));
-  function choose(key){ if (!key) return; engine.select(key); rows.forEach((r,i)=>r.classList.toggle("on", slots[i].key===key)); view.draw(); Engine.last = engine; }
+  // play button on a row: start that version, pause if it is already the one playing
+  function pick(key, fromButton){
+    if (!key) return; Engine.last = engine;
+    if (fromButton && key===engine.active && !video.paused){ video.pause(); return; }
+    engine.select(key); view.render();
+    if (fromButton && video.paused) video.play();
+  }
   const vbox = h("div",{class:"vbox"}, video, vmsg);
   vbox.addEventListener("pointerdown", () => Engine.last = engine);
-  vbox._eng = engine; lazy.observe(vbox);
-  return h("article",{class:"rw", id:"rw-"+rw.id}, vbox,
-    h("div",{}, h("h3",{}, rw.title||rw.id), h("p",{class:"src"}, rw.source||""), h("div",{class:"vlist"}, rows), view.spec));
+  view.el._eng = engine; lazy.observe(view.el);
+  return h("article",{class:"rw", id:"rw-"+rw.id},
+    h("h3",{}, rw.title||rw.id), h("p",{class:"src"}, rw.source||""), vbox, view.el);
 }
 
 const EL_DESC = {
@@ -746,7 +775,7 @@ function render(){
   for (const op of OP_ORDER) if ((DEMO.sections[op]||[]).length) secs.push([op, OPS[op].label, opSection(op)]);
   if ((DEMO.realworld||[]).length) secs.push(["real","Real-world", h("section",{id:"real"}, h("div",{class:"wrap"},
     h("div",{class:"sec-head"}, h("h2",{},"Real-world recordings"),
-      h("p",{class:"desc"},"In-the-wild clips with no reference target. The video plays muted and the selected audio plays in sync with it; switch versions while it plays.")),
+      h("p",{class:"desc"},"In-the-wild clips with no reference target. The video is the same for every version; only the audio changes. Each version has its own spectrogram under the video on the same time axis — press play on a row to hear it in sync with the picture, and switch rows while it plays.")),
     DEMO.realworld.map(realBlock)))]);
 
   const nav = h("nav",{}, h("div",{class:"wrap"}, secs.map(([id,label]) => h("a",{href:"#"+id,"data-id":id}, label))));

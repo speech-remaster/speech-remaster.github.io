@@ -129,11 +129,14 @@ section{padding:56px 0 8px}
 .spec canvas{position:absolute;inset:0;width:100%;height:100%}
 .spec .head{position:absolute;top:0;bottom:0;left:0;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.7);opacity:0;pointer-events:none}
 /* axes: frequency on the left (mel-spaced, 0–22.05 kHz), time below (each file's own length) */
-.plot{display:grid;grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto 15px}
+.plot{display:grid;grid-template-columns:32px minmax(0,1fr);grid-template-rows:auto 15px}
 .ax-y{position:relative;font-size:9.5px;line-height:1;color:var(--faint);font-variant-numeric:tabular-nums}
-.ax-y span{position:absolute;right:5px;transform:translateY(50%);white-space:nowrap}
+.ax-y span{position:absolute;right:6px;transform:translateY(50%);white-space:nowrap}
+.ax-y span::after{content:"";position:absolute;right:-6px;top:50%;width:3px;border-top:1px solid var(--line2)}
+.ax-y span.lo::after{top:auto;bottom:0}
+.ax-y span.hi::after{top:0}
 .ax-y span.lo{transform:none}
-.ax-y span.hi{transform:translateY(100%)}
+.ax-y span.hi{transform:translateY(calc(100% + 2px))}
 .plot.compact .ax-y span.mid:not(.keep){display:none}
 .ax-x{grid-column:2;position:relative;font-size:9.5px;line-height:1;color:var(--faint);font-variant-numeric:tabular-nums}
 .ax-x span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
@@ -230,8 +233,8 @@ const DEMO = {
    * elements: letters in the recording (M main · I interferer · N noise · E event · R reverb)
    * event   : sound-event caption used in the prompt ("dog barking", "applauding sound", …) */
   scenes: {
-    rm1: { elements:"MINER", event:"…" },
-    rm2: { elements:"MINER", event:"…" },
+    rm1: { elements:"MINR", event:"…" },
+    rm2: { elements:"MINR", event:"…" },
     rm3: { elements:"MIER",  event:"…" },
 
     rd1: { elements:"MNR" },
@@ -247,7 +250,6 @@ const DEMO = {
 
     nm1: { elements:"MIN" },
     nm2: { elements:"MIR" },
-    nm3: { elements:"MINER", event:"…" },
 
     hero:{ elements:"MINER", event:"dog barking" },   // hidden 21-prompt section (hero.show:false)
   },
@@ -260,7 +262,7 @@ const DEMO = {
     reduce:    [ {scene:"rd1"}, {scene:"rd2"} ],
     enhance:   [ {scene:"en1"}, {scene:"en2"}, {scene:"en3"} ],
     boost:     [ {scene:"bo1", select:["M"]}, {scene:"bo2", select:["I"]}, {scene:"bo3", select:["M","I"]} ],
-    normalize: [ {scene:"nm1"}, {scene:"nm2"}, {scene:"nm3"} ],
+    normalize: [ {scene:"nm1"}, {scene:"nm2"} ],
   },
 
   /* One scene rendered with all 21 prompts. Kept for later — set show:true once such a recording is ready. */
@@ -403,12 +405,15 @@ function AC(){
   document.addEventListener(ev, () => { if (_ctx && _ctx.state==="suspended") _ctx.resume(); }, {passive:true}));
 
 const bufCache = new Map();
+const LOAD_ERR = {};
+const whyMissing = src => !src ? "not rendered for this sample" : (LOAD_ERR[src] || "pending") + " — " + shortPath(src);
 function loadBuf(src){
   if (!src) return Promise.resolve(null);
   if (!bufCache.has(src)){
     bufCache.set(src, fetch(src)
-      .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-      .then(ab => new Promise((res,rej) => { const p = AC().decodeAudioData(ab, res, rej); if (p && p.then) p.then(res,rej); }))
+      .then(r => { if (!r.ok){ LOAD_ERR[src] = "not found (" + r.status + ")"; throw 0; } return r.arrayBuffer(); })
+      .then(ab => new Promise((res,rej) => { const p = AC().decodeAudioData(ab, res, rej); if (p && p.then) p.then(res,rej); })
+        .catch(err => { LOAD_ERR[src] = LOAD_ERR[src] || "could not decode (" + (err && err.message || "unsupported format") + ")"; throw err; }))
       .catch(() => null));
   }
   return bufCache.get(src);
@@ -483,14 +488,15 @@ const lazy = new IntersectionObserver(ents => ents.forEach(e => {
 
 /* swap the icon only when the state changes: replacing it on every animation frame
  * removes the node under the cursor between mousedown and mouseup, and the browser drops the click */
-const FREQ_TICKS = [[0,"0"],[1000,"1k"],[2000,"2k"],[4000,"4k"],[8000,"8k"],[F_MAX,"22.05k"]];
+/* ticks chosen so they sit at (almost) equal steps on the mel axis */
+const FREQ_TICKS = [[0,"0"],[1000,"1k"],[3000,"3k"],[8000,"8k"],[F_MAX,"22k"]];   // ≈ 0, ¼, ½, ¾, 1 of the mel axis
 const melFrac = f => Math.log10(1+f/700) / Math.log10(1+F_MAX/700);
 function framePlot(spec){
   const y = h("div",{class:"ax-y", title:"frequency (Hz, mel-spaced)"},
-    FREQ_TICKS.map(([f,l],i) => h("span",{class: i===0 ? "lo" : i===FREQ_TICKS.length-1 ? "hi" : (f===4000 ? "mid keep" : "mid"), style:`bottom:${melFrac(f)*100}%`}, l)));
+    FREQ_TICKS.map(([f,l],i) => h("span",{class: i===0 ? "lo" : i===FREQ_TICKS.length-1 ? "hi" : (f===3000 ? "mid keep" : "mid"), style:`bottom:${melFrac(f)*100}%`}, l)));
   const x = h("div",{class:"ax-x", title:"time (s)"});
   const el = h("div",{class:"plot"}, y, spec, x);
-  plotSizer.observe(spec);                       // short plots keep only 0 / 4k / 22.05k
+  plotSizer.observe(spec);                       // short plots keep only 0 / 3k / 22k
   return {el, x};
 }
 const plotSizer = new ResizeObserver(ents => ents.forEach(e => {
@@ -603,7 +609,7 @@ class ColumnsView {
       if (!alive()) return;
       const g = c.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
       c.msg.hidden = !!sp;
-      c.msg.textContent = sp ? "" : s.src ? "pending — " + shortPath(s.src) : "not rendered for this sample";
+      c.msg.textContent = sp ? "" : whyMissing(s.src);
       setTimeAxis(c.x, bufs[s.key] ? bufs[s.key].duration : 0);
       c.spec.querySelectorAll(".mark").forEach(m=>m.remove());
       if (sp && this.marks && dur) for (const m of this.marks) c.spec.insertBefore(h("div",{class:"mark",style:`left:${m.t/dur*100}%`}, h("span",{},m.label)), c.head);
@@ -757,7 +763,7 @@ class TracksView {
       const r = this.rows[s.key]; if (!r) return;
       const sp = bufs[s.key] ? await getSpec(s.src) : null; if (!alive()) return;
       const g = r.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
-      r.msg.hidden = !!sp; r.msg.textContent = sp ? "" : "pending — " + shortPath(s.src);
+      r.msg.hidden = !!sp; r.msg.textContent = sp ? "" : whyMissing(s.src);
       setTimeAxis(r.x, bufs[s.key] ? bufs[s.key].duration : 0);
     }));
   }

@@ -113,6 +113,7 @@ section{padding:56px 0 8px}
 
 /* three columns */
 .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px}
+.cols.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (max-width:760px){.cols{grid-template-columns:1fr;gap:12px}}
 .col-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .pb{width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;flex:none;color:var(--ink);background:#fff;transition:background .15s,border-color .15s}
@@ -212,6 +213,7 @@ const DEMO = {
     bibtex: "@inproceedings{srm2027,\n  title     = {TBD},\n  author    = {Lee, Myungjin and Ji, Youna and Lee, Jiyoung and Choi, Min-Seok and Chung, Soo-Whan},\n  booktitle = {ICASSP},\n  year      = {2027}\n}",
   },
   root: "audio/",
+  showTarget: false,   // true → simulated samples show Input | Output | Target (target_<Tnn>.wav needed)
 
   scenes: {
     s01: { elements:"MNR" },
@@ -307,11 +309,12 @@ const P = {
 };
 const ALL_SRCS = new Set();
 const addSrc = s => { if (s) ALL_SRCS.add(s); };
-const elLabel = (e, scene) => e==="E" && scene && scene.event ? scene.event.replace(/^./, c=>c.toUpperCase()) : EL_SHORT[e];
+const evName = scene => scene && scene.event ? scene.event.trim().replace(/^the\s+/i,"") : "";
+const elLabel = (e, scene) => e==="E" && evName(scene) ? evName(scene).replace(/^./, c=>c.toUpperCase()) : EL_SHORT[e];
 const shortPath = s => s ? s.replace(DEMO.root,"") : "";
 
 function canonicalPrompt(task, scene){
-  const t = TASKS[task], ev = scene.event || "sound event";
+  const t = TASKS[task], ev = evName(scene) || "sound event";
   const np = e => ({M:"the main speaker", I:"the interfering speaker", N:"the background noise", E:`the ${ev}`, R:"the reverberation"})[e];
   switch (t.op){
     case "remove":    return "remove " + joinList(t.els.map(np));
@@ -333,7 +336,7 @@ function nounPatterns(scene){
     [/\b(reverberation|reverb|echo)\b/i, "R"],
     [/\b(sound events?)\b/i, "E"],
   ];
-  if (scene && scene.event) pats.unshift([new RegExp("\\b("+esc(scene.event)+")(?: sound)?\\b","i"), "E"]);
+  if (evName(scene)) pats.unshift([new RegExp("\\b("+esc(evName(scene))+")(?: sound)?\\b","i"), "E"]);
   return pats;
 }
 function promptNode(text, scene){
@@ -520,7 +523,7 @@ Engine.current = null; Engine.last = null;
 class ColumnsView {
   constructor(engine, labels, marks){
     this.engine = engine; this.marks = marks; this.cols = {};
-    this.el = h("div",{class:"cols"});
+    this.el = h("div",{class:"cols"+(labels.length===2?" two":"")});
     for (const [key,label] of labels){
       const pb = h("button",{class:"pb","aria-label":"Play "+label, html:ICON_PLAY, onclick:()=>{ Engine.last=engine; engine.toggle(key); }});
       const t = h("span",{class:"col-t"},"");
@@ -574,13 +577,16 @@ document.addEventListener("keydown", e => {
 /* =====================================================================
  * 5. PAGE
  * ===================================================================== */
+const SIM_COLS = () => DEMO.showTarget ? [["input","Input"],["output","Output"],["target","Target"]] : [["input","Input"],["output","Output"]];
+const simSlots = (inp, out, tgt) => DEMO.showTarget ? [{key:"input",src:inp},{key:"output",src:out},{key:"target",src:tgt}] : [{key:"input",src:inp},{key:"output",src:out}];
+
 function sampleBlock(op, sm, index){
   const O = OPS[op], scene = sceneOf(sm.scene), p = present(scene);
   let sel = new Set(sm.select || (O.opts.length ? [O.opts.find(e=>p.has(e)) || O.opts[0]] : []));
   if (!O.multi && O.opts.length) sel = new Set([O.opts[0]]);
 
   const engine = new Engine();
-  const view = new ColumnsView(engine, [["input","Input"],["output","Output"],["target","Target"]], scene.marks);
+  const view = new ColumnsView(engine, SIM_COLS(), scene.marks);
   engine.view = view;
 
   const promptBox = h("div"), notice = h("p",{class:"notice",hidden:true});
@@ -616,7 +622,7 @@ function sampleBlock(op, sm, index){
     const out = rendered ? ((sm.outputs||{})[task] || P.output(sm.scene, task)) : null;
     const tgt = noop ? inp : rendered ? ((sm.targets||{})[task] || P.target(sm.scene, task)) : null;
     block.dataset.task = task;
-    engine.setSlots([{key:"input",src:inp},{key:"output",src:out},{key:"target",src:tgt}]);
+    engine.setSlots(simSlots(inp, out, tgt));
   }
 
   const has = [...p].sort((a,b)=>ELS.indexOf(a)-ELS.indexOf(b)).map(e => h("span",{class:"el",style:cvars(e)}, h("i",{class:"dotc"}), elLabel(e, scene)));
@@ -639,7 +645,7 @@ function opSection(op){
 function heroSection(){
   const H = DEMO.hero, scene = sceneOf(H.scene), p = present(scene);
   const engine = new Engine();
-  const view = new ColumnsView(engine, [["input","Input"],["output","Output"],["target","Target"]], scene.marks);
+  const view = new ColumnsView(engine, SIM_COLS(), scene.marks);
   engine.view = view;
   let op = "remove", sel = new Set(["I","N","E","R"].filter(e=>p.has(e)));
   const promptBox = h("div"), pills = [];
@@ -652,7 +658,7 @@ function heroSection(){
     const task = taskFor(op, sel);
     pills.forEach(([g,e,b]) => b.classList.toggle("on", g===op && (e==="_" || sel.has(e))));
     promptBox.replaceChildren(promptNode((H.prompts||{})[task] || canonicalPrompt(task, scene), scene));
-    engine.setSlots([{key:"input",src:P.input(H.scene)},{key:"output",src:P.output(H.scene,task)},{key:"target",src:P.target(H.scene,task)}]);
+    engine.setSlots(simSlots(P.input(H.scene), P.output(H.scene,task), P.target(H.scene,task)));
   }
   const block = h("article",{class:"sample"}, ...rows, promptBox, view.el);
   update();
@@ -677,7 +683,7 @@ class TracksView {
         onPick(s.key, false); });
       const row = h("div",{class:"trk"},
         h("div",{class:"trk-head"}, pb, h("span",{class:"col-lb"}, s.label),
-          s.prompt ? null : h("span",{class:"asrec"},"· as recorded"), t, s.prompt ? promptNode(s.prompt, {}) : null),
+          s.prompt ? null : h("span",{class:"asrec"},"· as recorded"), t, s.prompt ? promptNode(s.prompt, {event: s.event}) : null),
         spec);
       this.rows[s.key] = {row, pb, t, cv, head, msg, src:s.src};
       this.el.append(row);
@@ -711,7 +717,7 @@ function realBlock(rw){
   const slots = [{key:"input", label:"Input", src: inFolderA(rw.input) || base+"input.wav"},
     ...rw.outputs.map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output",
       src: inFolderA(o.src) || (o.task ? `${base}output_${o.task}.wav` : `${base}out_${i+1}.wav`),
-      prompt: o.prompt || (o.task ? canonicalPrompt(o.task, {event: rw.event}) : "")}))];
+      prompt: o.prompt || (o.task ? canonicalPrompt(o.task, {event: rw.event}) : ""), event: rw.event}))];
   const inFolder = f => f && !f.includes("/") ? base + f : f;     // "x.mp4" → audio/real/<id>/x.mp4
   const vsrc = inFolder(rw.video) || `${base}${rw.id}_video.mp4`; addSrc(vsrc);
   const video = h("video",{src:vsrc, controls:true, playsinline:true, preload:"metadata", poster:rw.poster||null}); video.muted = true;
@@ -764,7 +770,7 @@ function guideSection(){
       h("div",{class:"pane"}, h("h3",{},"Using a sample"),
         h("ol",{},
           h("li",{}, h("span",{},"Choose elements under a sample. The prompt is rebuilt from your choice, and the output changes with it.")),
-          h("li",{}, h("span",{},"Press play on ", h("b",{},"Input"), ", ", h("b",{},"Output"), " or ", h("b",{},"Target"), ". Pressing another column while playing switches to it at the same time position.")),
+          h("li",{}, h("span",{},"Press play on ", h("b",{},"Input"), DEMO.showTarget ? [", ", h("b",{},"Output"), " or ", h("b",{},"Target")] : [" or ", h("b",{},"Output")], ". Pressing another one while playing switches to it at the same time position.")),
           h("li",{}, h("span",{},"A dashed option is an element the recording does not contain. Choosing it is a ", h("b",{},"no-op"), ": the output should equal the input.")))))));
 }
 
@@ -823,7 +829,7 @@ async function runCheck(){
     for (const [task,t] of Object.entries(TASKS)){
       if (t.op!==op || (sm.tasks && !sm.tasks.includes(task))) continue;
       addSrc((sm.outputs||{})[task] || P.output(sm.scene, task));
-      if (t.els.some(e => p.has(e))) addSrc((sm.targets||{})[task] || P.target(sm.scene, task));
+      if (DEMO.showTarget && t.els.some(e => p.has(e))) addSrc((sm.targets||{})[task] || P.target(sm.scene, task));
     }
   }
   const box = h("div",{id:"check"}, "checking "+ALL_SRCS.size+" files…"); document.body.append(box);

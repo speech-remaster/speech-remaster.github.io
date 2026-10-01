@@ -125,11 +125,11 @@ section{padding:56px 0 8px}
 .spec{position:relative;height:116px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;cursor:pointer;touch-action:none;user-select:none;transition:border-color .15s}
 .col.playing .spec{border-color:var(--brand)}
 .spec canvas{position:absolute;inset:0;width:100%;height:100%}
-.spec .head{position:absolute;top:0;bottom:0;left:0;width:1.5px;margin-left:-.75px;background:var(--ink);opacity:0;pointer-events:none}
-.sample.active .spec .head{opacity:.3}
+.spec .head{position:absolute;top:0;bottom:0;left:0;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.7);opacity:0;pointer-events:none}
+.sample.active .spec .head{opacity:.45}
 .sample.active .col.playing .spec .head{opacity:.9}
 .spec .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 12px;color:var(--faint);font-size:12px;pointer-events:none;background:var(--soft)}
-.spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(31,35,40,.35);pointer-events:none}
+.spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(255,255,255,.6);pointer-events:none}
 .spec .mark span{position:absolute;top:4px;left:4px;font-size:10.5px;color:var(--ink2);background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;white-space:nowrap}
 
 /* real-world: video on the left, one row per version on the right (play + prompt + spectrogram),
@@ -236,11 +236,11 @@ const DEMO = {
   hero: { show:false, scene:"hero", prompts:{} },
 
   realworld: [
-    { id:"rw01", title:"Sample 1", source:"Source: AudioCaps ",
-      video:"audio/real/rw01/test00047_video.mp4", event:"the applauding sound",
-      outputs:[ {task:"T05"}, {task:"T16"} ] },          // → output_T01.wav, output_T16.wav
-    { id:"rw03", title:"Sample 2", source:"Source: AudioCaps ",
-      video:"audio/real/rw03/test00057_video.mp4",
+    { id:"rw01", title:"Sample 1", source:"Source: AudioCaps",
+      video:"test00047_video.mp4", event:"the applauding sound",
+      outputs:[ {task:"T05"}, {task:"T16"} ] },
+    { id:"rw03", title:"Sample 2", source:"Source: AudioCaps",
+      video:"test00057_video.mp4",
       outputs:[ {task:"T04"}, {task:"T16"} ] },
   ],
 };
@@ -389,7 +389,8 @@ function loadBuf(src){
  * Color: fixed range DB_LO … DB_HI (dBFS; a full-scale sine = 0 dB), same for every file. */
 const SPEC_W = 720, SPEC_H = 120, NFFT = 2048, F_MAX = MODEL_SR/2, DB_LO = -80, DB_HI = -20;
 const LUT = (() => {
-  const stops = [[255,255,255],[240,243,251],[206,216,244],[157,176,231],[110,128,203],[70,82,160],[38,43,105],[18,20,58]];
+  // matplotlib "magma", 17 samples
+  const stops = [[0,0,4],[10,8,34],[29,17,71],[54,16,107],[81,18,124],[106,28,129],[131,38,129],[156,46,127],[183,55,121],[208,65,111],[231,82,99],[245,107,92],[252,137,97],[254,167,114],[254,196,136],[253,226,163],[252,253,191]];
   const lut = new Uint8ClampedArray(256*3);
   for (let i=0;i<256;i++){
     const x = i/255*(stops.length-1), k = Math.min(stops.length-2, Math.floor(x)), f = x-k;
@@ -706,11 +707,13 @@ class TracksView {
 function realBlock(rw){
   const base = `${DEMO.root}real/${rw.id}/`;
   const many = rw.outputs.length > 1;
-  const slots = [{key:"input", label:"Input", src: rw.input || base+"input.wav"},
+  const inFolderA = f => f && !f.includes("/") ? base + f : f;
+  const slots = [{key:"input", label:"Input", src: inFolderA(rw.input) || base+"input.wav"},
     ...rw.outputs.map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output",
-      src: o.src || (o.task ? `${base}output_${o.task}.wav` : `${base}out_${i+1}.wav`),
+      src: inFolderA(o.src) || (o.task ? `${base}output_${o.task}.wav` : `${base}out_${i+1}.wav`),
       prompt: o.prompt || (o.task ? canonicalPrompt(o.task, {event: rw.event}) : "")}))];
-  const vsrc = rw.video || `${base}${rw.id}_video.mp4`; addSrc(vsrc);
+  const inFolder = f => f && !f.includes("/") ? base + f : f;     // "x.mp4" → audio/real/<id>/x.mp4
+  const vsrc = inFolder(rw.video) || `${base}${rw.id}_video.mp4`; addSrc(vsrc);
   const video = h("video",{src:vsrc, controls:true, playsinline:true, preload:"metadata", poster:rw.poster||null}); video.muted = true;
   const vmsg = h("div",{class:"msg",hidden:true});
   video.addEventListener("error", () => { vmsg.hidden=false; vmsg.textContent = "video pending — " + shortPath(vsrc); });

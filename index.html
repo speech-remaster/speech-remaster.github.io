@@ -168,11 +168,13 @@ pre.bib{background:var(--soft);border-radius:8px;padding:14px 16px;overflow-x:au
  *
  * Path convention (override per sample with inputSrc / outputs:{Tnn:src} / targets:{Tnn:src}):
  *   audio/sim/<scene>/input.wav
- *   audio/sim/<scene>/<Tnn>_output.wav
- *   audio/sim/<scene>/<Tnn>_target.wav     (not needed for a no-op: target = input)
- *   audio/real/<id>/video.mp4              (muted video)
+ *   audio/sim/<scene>/output_<Tnn>.wav
+ *   audio/sim/<scene>/target_<Tnn>.wav     (not needed for a no-op: target = input)
+ *   audio/real/<id>/<id>_video.mp4         (muted video, e.g. test00114/test00114_video.mp4)
  *   audio/real/<id>/input.wav              (original audio of the clip)
- *   audio/real/<id>/out_<k>.wav            (SRM output for outputs[k-1])
+ *   audio/real/<id>/output_<Tnn>.wav       (SRM output for outputs:[{task:"Tnn"}])
+ *   realworld outputs: {task:"T01"} → output_T01.wav, prompt defaults to the canonical one;
+ *                      add prompt:"..." for the exact wording, or src:"..." for any other file name
  *
  * scene.elements : letters in the scene (M is implied)
  *                  M main speaker · I interfering speaker · N background noise
@@ -234,10 +236,10 @@ const DEMO = {
   hero: { show:false, scene:"hero", prompts:{} },
 
   realworld: [
-    { id:"rw01", title:"Street interview", source:"Source: TBD (license: TBD)",
-      outputs:[ {prompt:"remove the background noise"}, {prompt:"enhance the speech"} ] },
-    { id:"rw02", title:"Lecture hall", source:"Source: TBD (license: TBD)",
-      outputs:[ {prompt:"reduce the reverberation"}, {prompt:"remove the reverberation"} ] },
+    { id:"test00114", title:"Street interview", source:"Source: TBD (license: TBD)",
+      outputs:[ {task:"T01"}, {task:"T16"} ] },          // → output_T01.wav, output_T16.wav
+    { id:"test00200", title:"Lecture hall", source:"Source: TBD (license: TBD)",
+      outputs:[ {task:"T19"}, {task:"T04"} ] },
   ],
 };
 
@@ -298,8 +300,8 @@ const sceneOf = id => { const s = DEMO.scenes[id]; if (!s) throw new Error("unkn
 const present = scene => new Set(("M"+scene.elements).split(""));
 const P = {
   input:  s     => `${DEMO.root}sim/${s}/input.wav`,
-  output: (s,t) => `${DEMO.root}sim/${s}/${t}_output.wav`,
-  target: (s,t) => `${DEMO.root}sim/${s}/${t}_target.wav`,
+  output: (s,t) => `${DEMO.root}sim/${s}/output_${t}.wav`,
+  target: (s,t) => `${DEMO.root}sim/${s}/target_${t}.wav`,
 };
 const ALL_SRCS = new Set();
 const addSrc = s => { if (s) ALL_SRCS.add(s); };
@@ -356,7 +358,13 @@ function promptNode(text, scene){
  * 4. AUDIO + SPECTROGRAM ENGINE
  * ===================================================================== */
 let _ctx = null;
-function AC(){ if (!_ctx) _ctx = new (window.AudioContext||window.webkitAudioContext)(); return _ctx; }
+/* decode everything at the model rate (44.1 kHz) so every file shares one frequency axis */
+const MODEL_SR = 44100;
+function AC(){
+  if (!_ctx){ const C = window.AudioContext||window.webkitAudioContext;
+    try { _ctx = new C({sampleRate: MODEL_SR}); } catch(e){ _ctx = new C(); } }
+  return _ctx;
+}
 ["pointerdown","touchend","click","keydown"].forEach(ev =>
   document.addEventListener(ev, () => { if (_ctx && _ctx.state==="suspended") _ctx.resume(); }, {passive:true}));
 
@@ -374,7 +382,10 @@ function loadBuf(src){
 
 /* Spectrogram on one fixed dB scale for every file, so a removed element disappears
  * instead of being re-normalized. Tune DB_LO / DB_HI once real samples are in. */
-const SPEC_W = 720, SPEC_H = 120, NFFT = 2048, DB_LO = -105, DB_HI = -20;
+/* Frequency axis: 0 – 22.05 kHz (mel-spaced) for every file.
+ * Time axis: each spectrogram spans exactly its own wav.
+ * Color: fixed range DB_LO … DB_HI (dBFS; a full-scale sine = 0 dB), same for every file. */
+const SPEC_W = 720, SPEC_H = 120, NFFT = 2048, F_MAX = MODEL_SR/2, DB_LO = -80, DB_HI = -20;
 const LUT = (() => {
   const stops = [[255,255,255],[240,243,251],[206,216,244],[157,176,231],[110,128,203],[70,82,160],[38,43,105],[18,20,58]];
   const lut = new Uint8ClampedArray(256*3);
@@ -402,8 +413,9 @@ function renderSpec(buf){
   if (buf.numberOfChannels>1){ const y=new Float32Array(x.length); for (let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for (let i=0;i<y.length;i++) y[i]+=d[i]/buf.numberOfChannels; } x=y; }
   const win = new Float32Array(N); for (let i=0;i<N;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
   const mel = f => 2595*Math.log10(1+f/700), imel = m => 700*(10**(m/2595)-1);
-  const mMax = mel(sr/2), rowBin = new Int32Array(H+1);
-  for (let r=0;r<=H;r++) rowBin[r] = Math.min(N/2, Math.round(imel(mMax*r/H)/sr*N));
+  const mMax = mel(F_MAX), rowBin = new Int32Array(H+1);
+  for (let r=0;r<=H;r++){ const f = imel(mMax*r/H);   // rows above this file's Nyquist stay blank
+    rowBin[r] = f > sr/2 + 1 ? N/2+1 : Math.min(N/2, Math.round(f/sr*N)); }
   const cv = document.createElement("canvas"); cv.width=W; cv.height=H;
   const g = cv.getContext("2d"), img = g.createImageData(W,H), px = img.data;
   const re = new Float32Array(N), im = new Float32Array(N), db = new Float32Array(N/2+1), norm = N/4;
@@ -693,8 +705,10 @@ function realBlock(rw){
   const base = `${DEMO.root}real/${rw.id}/`;
   const many = rw.outputs.length > 1;
   const slots = [{key:"input", label:"Input", src: rw.input || base+"input.wav"},
-    ...rw.outputs.map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output", src: o.src || `${base}out_${i+1}.wav`, prompt:o.prompt}))];
-  const vsrc = rw.video || base+"video.mp4"; addSrc(vsrc);
+    ...rw.outputs.map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output",
+      src: o.src || (o.task ? `${base}output_${o.task}.wav` : `${base}out_${i+1}.wav`),
+      prompt: o.prompt || (o.task ? canonicalPrompt(o.task, {event: rw.event}) : "")}))];
+  const vsrc = rw.video || `${base}${rw.id}_video.mp4`; addSrc(vsrc);
   const video = h("video",{src:vsrc, controls:true, playsinline:true, preload:"metadata", poster:rw.poster||null}); video.muted = true;
   const vmsg = h("div",{class:"msg",hidden:true});
   video.addEventListener("error", () => { vmsg.hidden=false; vmsg.textContent = "video pending — " + shortPath(vsrc); });

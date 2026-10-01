@@ -114,6 +114,7 @@ section{padding:56px 0 8px}
 /* three columns */
 .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px}
 .cols.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:760px){.cols.two{grid-template-columns:1fr}}
 @media (max-width:760px){.cols{grid-template-columns:1fr;gap:12px}}
 .col-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .pb{width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;flex:none;color:var(--ink);background:#fff;transition:background .15s,border-color .15s}
@@ -127,8 +128,18 @@ section{padding:56px 0 8px}
 .col.playing .spec{border-color:var(--brand)}
 .spec canvas{position:absolute;inset:0;width:100%;height:100%}
 .spec .head{position:absolute;top:0;bottom:0;left:0;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.7);opacity:0;pointer-events:none}
-.sample.active .spec .head{opacity:.45}
-.sample.active .col.playing .spec .head{opacity:.9}
+/* axes: frequency on the left (mel-spaced, 0–22.05 kHz), time below (each file's own length) */
+.plot{display:grid;grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto 15px}
+.ax-y{position:relative;font-size:9.5px;line-height:1;color:var(--faint);font-variant-numeric:tabular-nums}
+.ax-y span{position:absolute;right:5px;transform:translateY(50%);white-space:nowrap}
+.ax-y span.lo{transform:none}
+.ax-y span.hi{transform:translateY(100%)}
+.plot.compact .ax-y span.mid:not(.keep){display:none}
+.ax-x{grid-column:2;position:relative;font-size:9.5px;line-height:1;color:var(--faint);font-variant-numeric:tabular-nums}
+.ax-x span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.ax-x span.lo{transform:none}
+.ax-x span::before{content:"";position:absolute;left:50%;top:-4px;height:3px;border-left:1px solid var(--line2)}
+.ax-x span.lo::before{left:0}
 .spec .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 12px;color:var(--faint);font-size:12px;pointer-events:none;background:var(--soft)}
 .spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(255,255,255,.6);pointer-events:none}
 .spec .mark span{position:absolute;top:4px;left:4px;font-size:10.5px;color:var(--ink2);background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;white-space:nowrap}
@@ -148,12 +159,12 @@ section{padding:56px 0 8px}
 .trk-head .pb{width:28px;height:28px}
 .trk-head .prompt{font-size:14px;margin:0;flex-basis:100%;order:3;line-height:1.35}
 .trk-head .asrec{font-size:13px;color:var(--faint)}
-.trk .spec{flex:1 1 auto;height:auto;min-height:46px}
+.trk .plot{flex:1 1 auto;grid-template-rows:minmax(46px,1fr) 15px}
+.trk .spec{height:auto}
 .trk.on .spec{border-color:var(--brand)}
 .trk.on .col-lb{color:var(--ink)}
 .trk.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
-.rw .spec .head{opacity:.85}
-@media (max-width:860px){.rw{grid-template-columns:1fr;grid-template-areas:"title" "video" "tracks";gap:0}.trks{margin-top:16px;gap:16px}.trk{flex:none}.trk .spec{flex:none;height:84px}}
+@media (max-width:860px){.rw{grid-template-columns:1fr;grid-template-areas:"title" "video" "tracks";gap:0}.trks{margin-top:16px;gap:16px}.trk{flex:none}.trk .plot{flex:none;grid-template-rows:84px 15px}}
 
 footer{padding:56px 0 72px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:56px}
 footer h3{font-size:15px;color:var(--ink);margin-bottom:10px}
@@ -225,7 +236,6 @@ const DEMO = {
 
     rd1: { elements:"MNR" },
     rd2: { elements:"MIR" },
-    rd3: { elements:"MNER", event:"…" },
 
     en1: { elements:"MNER", event:"…" },
     en2: { elements:"MNR" },
@@ -247,7 +257,7 @@ const DEMO = {
     remove:    [ {scene:"rm1", select:["N","R"]},
                  {scene:"rm2", select:["I"]},
                  {scene:"rm3", select:["E"], tasks:["T02","T03","T04","T08","T09","T10","T14"]} ],
-    reduce:    [ {scene:"rd1"}, {scene:"rd2"}, {scene:"rd3"} ],
+    reduce:    [ {scene:"rd1"}, {scene:"rd2"} ],
     enhance:   [ {scene:"en1"}, {scene:"en2"}, {scene:"en3"} ],
     boost:     [ {scene:"bo1", select:["M"]}, {scene:"bo2", select:["I"]}, {scene:"bo3", select:["M","I"]} ],
     normalize: [ {scene:"nm1"}, {scene:"nm2"}, {scene:"nm3"} ],
@@ -473,6 +483,28 @@ const lazy = new IntersectionObserver(ents => ents.forEach(e => {
 
 /* swap the icon only when the state changes: replacing it on every animation frame
  * removes the node under the cursor between mousedown and mouseup, and the browser drops the click */
+const FREQ_TICKS = [[0,"0"],[1000,"1k"],[2000,"2k"],[4000,"4k"],[8000,"8k"],[F_MAX,"22.05k"]];
+const melFrac = f => Math.log10(1+f/700) / Math.log10(1+F_MAX/700);
+function framePlot(spec){
+  const y = h("div",{class:"ax-y", title:"frequency (Hz, mel-spaced)"},
+    FREQ_TICKS.map(([f,l],i) => h("span",{class: i===0 ? "lo" : i===FREQ_TICKS.length-1 ? "hi" : (f===4000 ? "mid keep" : "mid"), style:`bottom:${melFrac(f)*100}%`}, l)));
+  const x = h("div",{class:"ax-x", title:"time (s)"});
+  const el = h("div",{class:"plot"}, y, spec, x);
+  plotSizer.observe(spec);                       // short plots keep only 0 / 4k / 22.05k
+  return {el, x};
+}
+const plotSizer = new ResizeObserver(ents => ents.forEach(e => {
+  const plot = e.target.parentElement; if (plot) plot.classList.toggle("compact", e.contentRect.height < 80);
+}));
+function setTimeAxis(x, dur){
+  x.replaceChildren();
+  if (!dur) return;
+  const step = dur <= 12 ? 1 : dur <= 30 ? 2 : dur <= 60 ? 5 : 10;
+  for (let t = 0; t <= dur + 1e-6; t += step){
+    const f = t / dur; if (f > 0.97 && t > 0) break;          // leave room at the right edge
+    x.append(h("span",{class: t===0 ? "lo" : null, style:`left:${f*100}%`}, t===0 ? "0 s" : String(t)));
+  }
+}
 function setIcon(btn, playing){ if (btn._pl === playing) return; btn._pl = playing; btn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY; }
 const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
@@ -556,8 +588,9 @@ class ColumnsView {
       spec.addEventListener("pointerdown", e => { Engine.last=engine; spec.setPointerCapture(e.pointerId); this._drag=true; seek(e); });
       spec.addEventListener("pointermove", e => { if (this._drag) seek(e); });
       spec.addEventListener("pointerup", () => this._drag=false);
-      const col = h("div",{class:"col"}, h("div",{class:"col-head"}, pb, h("span",{class:"col-lb"},label), t), spec);
-      this.cols[key] = {col, pb, t, cv, head, msg, spec};
+      const plot = framePlot(spec);
+      const col = h("div",{class:"col"}, h("div",{class:"col-head"}, pb, h("span",{class:"col-lb"},label), t), plot.el);
+      this.cols[key] = {col, pb, t, cv, head, msg, spec, x: plot.x};
       this.el.append(col);
     }
     this.el._eng = engine; lazy.observe(this.el);
@@ -571,18 +604,23 @@ class ColumnsView {
       const g = c.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
       c.msg.hidden = !!sp;
       c.msg.textContent = sp ? "" : s.src ? "pending — " + shortPath(s.src) : "not rendered for this sample";
+      setTimeAxis(c.x, bufs[s.key] ? bufs[s.key].duration : 0);
       c.spec.querySelectorAll(".mark").forEach(m=>m.remove());
       if (sp && this.marks && dur) for (const m of this.marks) c.spec.insertBefore(h("div",{class:"mark",style:`left:${m.t/dur*100}%`}, h("span",{},m.label)), c.head);
     }));
   }
   render(e){
-    const p = e.pos(), f = e.dur ? p/e.dur : 0;
+    const p = e.pos();
     const box = this.el.closest(".sample"); if (box) box.classList.toggle("active", e.playing || p>0);
     for (const [k,c] of Object.entries(this.cols)){
       const on = e.playing && k===e.active;
       c.col.classList.toggle("playing", on);
       setIcon(c.pb, on);
-      c.head.style.left = (f*100)+"%";
+      // playhead only on the file being heard, on that file's own time axis
+      const d = e.bufs[k] ? e.bufs[k].duration : e.dur;
+      const show = k===e.active && (e.playing || p>0) && d;
+      c.head.style.opacity = show ? 1 : 0;
+      if (show) c.head.style.left = Math.min(100, p/d*100)+"%";
       c.t.textContent = e.dur ? ((p>0 && k===e.active) ? fmt(p)+" / " : "") + fmt(e.dur) : "";
     }
   }
@@ -704,11 +742,12 @@ class TracksView {
       spec.addEventListener("pointerdown", e => { const r = spec.getBoundingClientRect();
         if (video.duration) video.currentTime = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*video.duration;
         onPick(s.key, false); });
+      const plot = framePlot(spec);
       const row = h("div",{class:"trk"},
         h("div",{class:"trk-head"}, pb, h("span",{class:"col-lb"}, s.label),
           s.prompt ? null : h("span",{class:"asrec"},"· as recorded"), t, s.prompt ? promptNode(s.prompt, {event: s.event}) : null),
-        spec);
-      this.rows[s.key] = {row, pb, t, cv, head, msg, src:s.src};
+        plot.el);
+      this.rows[s.key] = {row, pb, t, cv, head, msg, src:s.src, x: plot.x};
       this.el.append(row);
     }
   }
@@ -719,6 +758,7 @@ class TracksView {
       const sp = bufs[s.key] ? await getSpec(s.src) : null; if (!alive()) return;
       const g = r.cv.getContext("2d"); g.clearRect(0,0,SPEC_W,SPEC_H); if (sp) g.drawImage(sp,0,0);
       r.msg.hidden = !!sp; r.msg.textContent = sp ? "" : "pending — " + shortPath(s.src);
+      setTimeAxis(r.x, bufs[s.key] ? bufs[s.key].duration : 0);
     }));
   }
   render(){
@@ -728,7 +768,10 @@ class TracksView {
       r.row.classList.toggle("on", on);
       r.row.classList.toggle("playing", on && playing);
       setIcon(r.pb, on && playing);
-      if (d) r.head.style.left = (v.currentTime/d*100)+"%";
+      const fd = e.bufs[k] ? e.bufs[k].duration : d;
+      const show = on && (playing || v.currentTime>0) && fd;
+      r.head.style.opacity = show ? 1 : 0;
+      if (show) r.head.style.left = Math.min(100, v.currentTime/fd*100)+"%";
       r.t.textContent = e.dur ? (on && v.currentTime>0 ? fmt(v.currentTime)+" / " : "") + fmt(e.dur) : "";
     }
   }

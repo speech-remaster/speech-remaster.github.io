@@ -118,7 +118,7 @@ section{padding:56px 0 8px}
 .col-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .pb{width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;flex:none;color:var(--ink);background:#fff;transition:background .15s,border-color .15s}
 .pb:hover{border-color:var(--brand)}
-.pb svg{width:11px;height:11px;fill:currentColor}
+.pb svg{width:11px;height:11px;fill:currentColor;pointer-events:none}
 .col.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
 .col-lb{font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .col.playing .col-lb{color:var(--ink)}
@@ -215,23 +215,42 @@ const DEMO = {
   root: "audio/",
   showTarget: false,   // true → simulated samples show Input | Output | Target (target_<Tnn>.wav needed)
 
+  /* One entry per recording. The key is the folder name under audio/sim/.
+   * elements: letters in the recording (M main · I interferer · N noise · E event · R reverb)
+   * event   : sound-event caption used in the prompt ("dog barking", "applauding sound", …) */
   scenes: {
-    s01: { elements:"MNR" },
-    s02: { elements:"MINE", event:"door slam" },
-    s03: { elements:"MER",  event:"glass breaking", marks:[{t:2.4,label:"glass"}] },
-    s04: { elements:"MIN" },
-    s05: { elements:"MIR" },
-    s06: { elements:"MINER", event:"phone ringing" },
-    s07: { elements:"MNER", event:"keyboard typing" },
-    hero:{ elements:"MINER", event:"dog barking" },
+    rm1: { elements:"MINER", event:"…" },
+    rm2: { elements:"MINER", event:"…" },
+    rm3: { elements:"MIER",  event:"…" },
+
+    rd1: { elements:"MNR" },
+    rd2: { elements:"MIR" },
+    rd3: { elements:"MNER", event:"…" },
+
+    en1: { elements:"MNER", event:"…" },
+    en2: { elements:"MNR" },
+    en3: { elements:"MINER", event:"…" },
+
+    bo1: { elements:"MIN" },
+    bo2: { elements:"MIR" },
+    bo3: { elements:"MINE", event:"…" },
+
+    nm1: { elements:"MIN" },
+    nm2: { elements:"MIR" },
+    nm3: { elements:"MINER", event:"…" },
+
+    hero:{ elements:"MINER", event:"dog barking" },   // hidden 21-prompt section (hero.show:false)
   },
 
+  /* Order in each list = Sample 1, 2, 3 on the page. */
   sections: {
-    remove:    [ {scene:"s06", select:["N","R"]}, {scene:"s02", select:["I"]}, {scene:"s03", select:["E"]} ],
-    reduce:    [ {scene:"s01"}, {scene:"s05"}, {scene:"s04" /* no reverberation → no-op */} ],
-    enhance:   [ {scene:"s07"}, {scene:"s01"} ],
-    boost:     [ {scene:"s04", select:["M"]}, {scene:"s05", select:["M","I"]} ],
-    normalize: [ {scene:"s04"}, {scene:"s05"}, {scene:"s01" /* no interferer → no-op */} ],
+    remove:    [ {scene:"rm1", select:["N","R"]},
+                 {scene:"rm2", select:["I"]},
+                 {scene:"rm3", select:["E"], tasks:["T02","T03","T04","T08","T09","T10","T14"]} ],
+    reduce:    [ {scene:"rd1"}, {scene:"rd2"}, {scene:"rd3"} ],
+    enhance:   [ {scene:"en1"}, {scene:"en2"}, {scene:"en3"} ],
+    boost:     [ {scene:"bo1", select:["M"]}, {scene:"bo2", select:["I"]}, {scene:"bo3", select:["M","I"]} ],
+    normalize: [ {scene:"nm1"}, {scene:"nm2"}, {scene:"nm3"} ],
   },
 
   /* One scene rendered with all 21 prompts. Kept for later — set show:true once such a recording is ready. */
@@ -452,6 +471,9 @@ const lazy = new IntersectionObserver(ents => ents.forEach(e => {
   lazy.unobserve(e.target); const en = e.target._eng; if (en){ en.visible = true; en.ensure(); }
 }), {rootMargin:"400px 0px"});
 
+/* swap the icon only when the state changes: replacing it on every animation frame
+ * removes the node under the cursor between mousedown and mouseup, and the browser drops the click */
+function setIcon(btn, playing){ if (btn._pl === playing) return; btn._pl = playing; btn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY; }
 const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
 
@@ -559,7 +581,7 @@ class ColumnsView {
     for (const [k,c] of Object.entries(this.cols)){
       const on = e.playing && k===e.active;
       c.col.classList.toggle("playing", on);
-      c.pb.innerHTML = on ? ICON_PAUSE : ICON_PLAY;
+      setIcon(c.pb, on);
       c.head.style.left = (f*100)+"%";
       c.t.textContent = e.dur ? ((p>0 && k===e.active) ? fmt(p)+" / " : "") + fmt(e.dur) : "";
     }
@@ -568,7 +590,8 @@ class ColumnsView {
 
 /* keyboard: Space = play/pause the last-touched sample, 1/2/3 = Input/Output/Target */
 document.addEventListener("keydown", e => {
-  if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/INPUT|TEXTAREA|SELECT|VIDEO/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.tagName==="BUTTON" && (e.code==="Space" || e.code==="Enter")) return;   // the button's own click handles it
   const en = Engine.last; if (!en) return;
   if (e.code==="Space"){ e.preventDefault(); en.toggle(); }
   else if (/^[1-9]$/.test(e.key)){ const s = en.slots[+e.key-1]; if (s) en.playing ? en.select(s.key) : en.play(s.key); en.onkey && en.onkey(s && s.key); }
@@ -704,7 +727,7 @@ class TracksView {
       const on = k===e.active;
       r.row.classList.toggle("on", on);
       r.row.classList.toggle("playing", on && playing);
-      r.pb.innerHTML = on && playing ? ICON_PAUSE : ICON_PLAY;
+      setIcon(r.pb, on && playing);
       if (d) r.head.style.left = (v.currentTime/d*100)+"%";
       r.t.textContent = e.dur ? (on && v.currentTime>0 ? fmt(v.currentTime)+" / " : "") + fmt(e.dur) : "";
     }

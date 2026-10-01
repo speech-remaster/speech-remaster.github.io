@@ -128,7 +128,7 @@ section{padding:56px 0 8px}
 .col.playing .spec{border-color:var(--brand)}
 .spec canvas{position:absolute;inset:0;width:100%;height:100%}
 .spec .head{position:absolute;top:0;bottom:0;left:0;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.7);opacity:0;pointer-events:none}
-/* axes: frequency on the left (mel-spaced, 0–22.05 kHz), time below (each file's own length) */
+/* axes: frequency on the left (linear, 0–22.05 kHz), time below (each file's own length); faint grid inside */
 .plot{display:grid;grid-template-columns:32px minmax(0,1fr);grid-template-rows:auto 15px}
 .ax-y{position:relative;font-size:9.5px;line-height:1;color:var(--faint);font-variant-numeric:tabular-nums}
 .ax-y span{position:absolute;right:6px;transform:translateY(50%);white-space:nowrap}
@@ -143,6 +143,11 @@ section{padding:56px 0 8px}
 .ax-x span.lo{transform:none}
 .ax-x span::before{content:"";position:absolute;left:50%;top:-4px;height:3px;border-left:1px solid var(--line2)}
 .ax-x span.lo::before{left:0}
+.spec .grid{position:absolute;inset:0;pointer-events:none}
+.spec .grid i{position:absolute;display:block}
+.spec .grid .gh{left:0;right:0;border-top:1px solid rgba(255,255,255,.13)}
+.spec .grid .gv{position:absolute;inset:0}
+.spec .grid .gx{top:0;bottom:0;border-left:1px solid rgba(255,255,255,.10)}
 .spec .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 12px;color:var(--faint);font-size:12px;pointer-events:none;background:var(--soft)}
 .spec .mark{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(255,255,255,.6);pointer-events:none}
 .spec .mark span{position:absolute;top:4px;left:4px;font-size:10.5px;color:var(--ink2);background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;white-space:nowrap}
@@ -233,9 +238,9 @@ const DEMO = {
    * elements: letters in the recording (M main · I interferer · N noise · E event · R reverb)
    * event   : sound-event caption used in the prompt ("dog barking", "applauding sound", …) */
   scenes: {
-    rm1: { elements:"MINR", event:"…" },
-    rm2: { elements:"MINR", event:"…" },
-    rm3: { elements:"MINR", event:"…" },
+    rm1: { elements:"MINER", event:"…" },
+    rm2: { elements:"MINER", event:"…" },
+    rm3: { elements:"MINER", event:"…" },
 
     rd1: { elements:"MNR" },
     rd2: { elements:"MIR" },
@@ -421,7 +426,7 @@ function loadBuf(src){
 
 /* Spectrogram on one fixed dB scale for every file, so a removed element disappears
  * instead of being re-normalized. Tune DB_LO / DB_HI once real samples are in. */
-/* Frequency axis: 0 – 22.05 kHz (mel-spaced) for every file.
+/* Frequency axis: 0 – 22.05 kHz (linear) for every file.
  * Time axis: each spectrogram spans exactly its own wav.
  * Color: fixed range DB_LO … DB_HI (dBFS; a full-scale sine = 0 dB), same for every file. */
 const SPEC_W = 720, SPEC_H = 120, NFFT = 2048, F_MAX = MODEL_SR/2, DB_LO = -80, DB_HI = -20;
@@ -452,9 +457,8 @@ function renderSpec(buf){
   let x = buf.getChannelData(0);
   if (buf.numberOfChannels>1){ const y=new Float32Array(x.length); for (let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for (let i=0;i<y.length;i++) y[i]+=d[i]/buf.numberOfChannels; } x=y; }
   const win = new Float32Array(N); for (let i=0;i<N;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
-  const mel = f => 2595*Math.log10(1+f/700), imel = m => 700*(10**(m/2595)-1);
-  const mMax = mel(F_MAX), rowBin = new Int32Array(H+1);
-  for (let r=0;r<=H;r++){ const f = imel(mMax*r/H);   // rows above this file's Nyquist stay blank
+  const rowBin = new Int32Array(H+1);                   // linear frequency axis, 0 … F_MAX
+  for (let r=0;r<=H;r++){ const f = F_MAX*r/H;          // rows above this file's Nyquist stay blank
     rowBin[r] = f > sr/2 + 1 ? N/2+1 : Math.min(N/2, Math.round(f/sr*N)); }
   const cv = document.createElement("canvas"); cv.width=W; cv.height=H;
   const g = cv.getContext("2d"), img = g.createImageData(W,H), px = img.data;
@@ -486,31 +490,35 @@ const lazy = new IntersectionObserver(ents => ents.forEach(e => {
   lazy.unobserve(e.target); const en = e.target._eng; if (en){ en.visible = true; en.ensure(); }
 }), {rootMargin:"400px 0px"});
 
-/* swap the icon only when the state changes: replacing it on every animation frame
- * removes the node under the cursor between mousedown and mouseup, and the browser drops the click */
-/* ticks chosen so they sit at (almost) equal steps on the mel axis */
-const FREQ_TICKS = [[0,"0"],[1000,"1k"],[3000,"3k"],[8000,"8k"],[F_MAX,"22k"]];   // ≈ 0, ¼, ½, ¾, 1 of the mel axis
-const melFrac = f => Math.log10(1+f/700) / Math.log10(1+F_MAX/700);
+const FREQ_TICKS = [[0,"0"],[4000,"4k"],[8000,"8k"],[12000,"12k"],[16000,"16k"],[F_MAX,"22k"]];
+const fFrac = f => f / F_MAX;
 function framePlot(spec){
-  const y = h("div",{class:"ax-y", title:"frequency (Hz, mel-spaced)"},
-    FREQ_TICKS.map(([f,l],i) => h("span",{class: i===0 ? "lo" : i===FREQ_TICKS.length-1 ? "hi" : (f===3000 ? "mid keep" : "mid"), style:`bottom:${melFrac(f)*100}%`}, l)));
-  const x = h("div",{class:"ax-x", title:"time (s)"});
+  const y = h("div",{class:"ax-y", title:"frequency (Hz)"},
+    FREQ_TICKS.map(([f,l],i) => h("span",{class: i===0 ? "lo" : i===FREQ_TICKS.length-1 ? "hi" : (f===12000 ? "mid keep" : "mid"), style:`bottom:${fFrac(f)*100}%`}, l)));
+  // faint grid: horizontal lines at the frequency ticks, vertical lines at the time ticks
+  const gv = h("div",{class:"gv"});
+  const grid = h("div",{class:"grid"}, FREQ_TICKS.slice(1,-1).map(([f]) => h("i",{class:"gh", style:`bottom:${fFrac(f)*100}%`})), gv);
+  spec.insertBefore(grid, spec.querySelector(".head"));
+  const x = h("div",{class:"ax-x", title:"time (s)"}); x._grid = gv;
   const el = h("div",{class:"plot"}, y, spec, x);
-  plotSizer.observe(spec);                       // short plots keep only 0 / 3k / 22k
+  plotSizer.observe(spec);                       // short plots keep only 0 / 12k / 22k
   return {el, x};
 }
 const plotSizer = new ResizeObserver(ents => ents.forEach(e => {
   const plot = e.target.parentElement; if (plot) plot.classList.toggle("compact", e.contentRect.height < 80);
 }));
 function setTimeAxis(x, dur){
-  x.replaceChildren();
+  x.replaceChildren(); if (x._grid) x._grid.replaceChildren();
   if (!dur) return;
   const step = dur <= 12 ? 1 : dur <= 30 ? 2 : dur <= 60 ? 5 : 10;
   for (let t = 0; t <= dur + 1e-6; t += step){
     const f = t / dur; if (f > 0.97 && t > 0) break;          // leave room at the right edge
     x.append(h("span",{class: t===0 ? "lo" : null, style:`left:${f*100}%`}, t===0 ? "0 s" : String(t)));
+    if (t > 0 && x._grid) x._grid.append(h("i",{class:"gx", style:`left:${f*100}%`}));
   }
 }
+/* swap the icon only when the state changes: replacing it on every animation frame
+ * removes the node under the cursor between mousedown and mouseup, and the browser drops the click */
 function setIcon(btn, playing){ if (btn._pl === playing) return; btn._pl = playing; btn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY; }
 const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';

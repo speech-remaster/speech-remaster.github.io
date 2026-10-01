@@ -1,6 +1,0 @@
-idx,stem,file,class,src_onset_samples,src_offset_samples,src_onset_sec,src_offset_sec,mix_onset_samples,mix_offset_samples,mix_onset_sec,mix_offset_sec,rir_channel,gain,speaker_id,transcription,caption
-0,speech,LibriSpeech-HQ/test-clean/908/157963/908-157963-0018.flac,speech,0,187646,0.0,4.255011,0,187646,0.0,4.255011,0,0.9407305054,908,,
-1,interfering_speech,LibriSpeech-HQ/test-clean/6829/68771/6829-68771-0030.flac,interfering_speech,0,84701,0.0,1.920658,144381,229082,3.273946,5.194603,5,0.1488583922,6829,,
-2,noise,fsd50k/FSD50K.eval_audio/117120.wav,noise,0,229082,0.0,5.194603,0,229082,0.0,5.194603,-1,0.6470328313,,,
-3,sound1,fsd50k/FSD50K.eval_audio/389771.wav,sound,0,50244,0.0,1.13932,166255,216499,3.769955,4.909274,5,9.2882760083,,,whoosh
-4,sound2,fsd50k/FSD50K.eval_audio/330802.wav,sound,0,50666,0.0,1.148889,99008,149674,2.245079,3.393968,8,0.7095935122,,,crushing

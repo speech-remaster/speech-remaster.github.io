@@ -153,7 +153,7 @@ section{padding:56px 0 8px}
 .rw .rw-title{grid-area:title;margin-bottom:14px}
 .rw h3{font-size:17px}
 .rw .src{font-size:13px;color:var(--muted);margin:2px 0 0}
-.vbox{grid-area:video;align-self:start;position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9}
+.vbox{grid-area:video;align-self:center;position:relative;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:16/9}
 .vbox video{width:100%;height:100%;display:block;object-fit:contain}
 .vbox .msg{position:absolute;inset:0;display:grid;place-items:center;color:#9aa1a9;font-size:12.5px;text-align:center;padding:0 16px;pointer-events:none}
 .trks{grid-area:tracks;display:flex;flex-direction:column;gap:14px;min-height:0}
@@ -235,7 +235,7 @@ const DEMO = {
   scenes: {
     rm1: { elements:"MINR", event:"…" },
     rm2: { elements:"MINR", event:"…" },
-    rm3: { elements:"MIER",  event:"…" },
+    rm3: { elements:"MINR", event:"…" },
 
     rd1: { elements:"MNR" },
     rd2: { elements:"MIR" },
@@ -258,7 +258,7 @@ const DEMO = {
   sections: {
     remove:    [ {scene:"rm1", select:["N","R"]},
                  {scene:"rm2", select:["I"]},
-                 {scene:"rm3", select:["E"], tasks:["T02","T03","T04","T08","T09","T10","T14"]} ],
+                 {scene:"rm3", select:["E"]} ],
     reduce:    [ {scene:"rd1"}, {scene:"rd2"} ],
     enhance:   [ {scene:"en1"}, {scene:"en2"}, {scene:"en3"} ],
     boost:     [ {scene:"bo1", select:["M"]}, {scene:"bo2", select:["I"]}, {scene:"bo3", select:["M","I"]} ],

@@ -101,6 +101,9 @@ section{padding:56px 0 8px}
 .pill.absent.on{background:var(--soft);border-color:var(--brand-bd);color:var(--muted);box-shadow:none}
 .pill .x{font-size:11.5px;opacity:.85;font-weight:400}
 .pill.fixed{cursor:default}
+.pill.locked{opacity:.38;cursor:not-allowed;border-style:solid}
+.pill.locked:hover{border-color:var(--line2);color:var(--ink2)}
+.lockhint{margin:8px 0 0;font-size:12.5px;color:var(--faint)}
 .opts .none{font-size:13.5px;color:var(--muted)}
 .prompt{font-size:21px;font-weight:500;margin:16px 0 0;line-height:1.45;letter-spacing:-.01em}
 .prompt .q{color:var(--faint);font-weight:400}
@@ -124,7 +127,7 @@ section{padding:56px 0 8px}
 .col-lb{font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .col.playing .col-lb{color:var(--ink)}
 .col-t{margin-left:auto;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
-.spec{position:relative;height:116px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;cursor:pointer;touch-action:none;user-select:none;transition:border-color .15s}
+.spec{position:relative;height:116px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:border-color .15s}
 .col.playing .spec{border-color:var(--brand)}
 .spec canvas{position:absolute;inset:0;width:100%;height:100%}
 .spec .head{position:absolute;top:0;bottom:0;left:0;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.7);opacity:0;pointer-events:none}
@@ -172,12 +175,47 @@ section{padding:56px 0 8px}
 .trk.on .spec{border-color:var(--brand)}
 .trk.on .col-lb{color:var(--ink)}
 .trk.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
-@media (max-width:860px){.rw{grid-template-columns:1fr;grid-template-areas:"title" "video" "tracks";gap:0}.trks{margin-top:16px;gap:16px}.trk{flex:none}.trk .plot{flex:none;grid-template-rows:84px 15px}}
+@media (max-width:860px){.vbox{position:sticky;top:44px;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.12)}.rw{grid-template-columns:1fr;grid-template-areas:"title" "video" "tracks";gap:0}.trks{margin-top:16px;gap:16px}.trk{flex:none}.trk .plot{flex:none;grid-template-rows:84px 15px}}
 
 footer{padding:56px 0 72px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:56px}
 footer h3{font-size:15px;color:var(--ink);margin-bottom:10px}
 pre.bib{background:var(--soft);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink2);margin:0}
 #check{position:fixed;right:12px;bottom:12px;max-width:min(520px,calc(100vw - 24px));max-height:50vh;overflow:auto;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+
+/* ---------- phones ---------- */
+@media (max-width:600px){
+  header{padding:44px 0 24px}
+  header .authors{margin-top:16px;font-size:14.5px}
+  header .aff,header .notes{font-size:12.5px}
+  header .btns{margin-top:16px}
+  header .btns a{height:36px;padding:0 16px;font-size:14px}
+  .abstract{margin-top:28px}
+  .abstract p{font-size:15px}
+  nav .wrap{gap:18px}
+  nav a{font-size:13.5px;padding:12px 0 10px}
+  section{padding:40px 0 4px}
+  section.guide{padding-top:28px}
+  .guide .pane{padding:16px}
+  .guide h3{font-size:15px}
+  .sec-head h2{font-size:22px}
+  .sec-head .desc{font-size:14.5px}
+  .sample{padding:20px 0 22px;margin-top:16px}
+  .s-head{gap:6px 12px}
+  .s-head .has{gap:4px 12px}
+  .opts{gap:6px;margin-top:14px}
+  .opts .lb{min-width:0;margin-right:2px}
+  .pill{height:32px;padding:0 12px 0 10px;font-size:13px}
+  .prompt{font-size:18px;margin-top:14px}
+  .cols{gap:14px;margin-top:14px}
+  .col-head{margin-bottom:6px}
+  .spec{height:92px}
+  .plot{grid-template-columns:30px minmax(0,1fr)}
+  .ax-y,.ax-x{font-size:9px}
+  .rw{padding:20px 0 24px;margin-top:16px}
+  .trk-head .prompt{font-size:14px}
+  footer{padding:40px 0 56px}
+  pre.bib{font-size:11px;padding:12px}
+}
 </style>
 </head>
 <body>
@@ -232,7 +270,7 @@ const DEMO = {
     bibtex: "@inproceedings{srm2027,\n  title     = {TBD},\n  author    = {Lee, Myungjin and Ji, Youna and Lee, Jiyoung and Choi, Min-Seok and Chung, Soo-Whan},\n  booktitle = {TBD},\n  year      = {2027}\n}",
   },
   root: "audio/",
-  showTarget: false,   // true → simulated samples show Input | Output | Target (target_<Tnn>.wav needed)
+  showTarget: true,    // true → simulated samples show Input | Output | Target (target_<Tnn>.wav needed); false → Input | Output
 
   /* One entry per recording. The key is the folder name under audio/sim/.
    * elements: letters in the recording (M main · I interferer · N noise · E event · R reverb)
@@ -276,7 +314,7 @@ const DEMO = {
   realworld: [
     { id:"rw04", title:"Sample 1", source:"Source: AudioCaps",
       video:"test00000_video.mp4", event:"the applauding sound",
-      outputs:[ {task:"T01"}, {task:"T4"} ] },
+      outputs:[ {task:"T01"}, {task:"T04"} ] },
     { id:"rw05", title:"Sample 2", source:"Source: AudioCaps",
       video:"test00302_video.mp4",
       outputs:[ {task:"T16"}, {task:"T18"} ] },
@@ -345,7 +383,8 @@ const P = {
 };
 const ALL_SRCS = new Set();
 const addSrc = s => { if (s) ALL_SRCS.add(s); };
-const evName = scene => scene && scene.event ? scene.event.trim().replace(/^the\s+/i,"") : "";
+const evName = scene => { const e = scene && scene.event ? scene.event.trim().replace(/^the\s+/i,"") : "";
+  return /^(…|\.\.\.|none|-)?$/i.test(e) ? "" : e; };
 const elLabel = (e, scene) => e==="E" && evName(scene) ? evName(scene).replace(/^./, c=>c.toUpperCase()) : EL_SHORT[e];
 const shortPath = s => s ? s.replace(DEMO.root,"") : "";
 
@@ -399,6 +438,7 @@ function promptNode(text, scene){
  * 4. AUDIO + SPECTROGRAM ENGINE
  * ===================================================================== */
 let _ctx = null;
+try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}   // iOS silent switch
 /* decode everything at the model rate (44.1 kHz) so every file shares one frequency axis */
 const MODEL_SR = 44100;
 function AC(){
@@ -659,6 +699,11 @@ function sampleBlock(op, sm, index){
   const O = OPS[op], scene = sceneOf(sm.scene), p = present(scene);
   let sel = new Set(sm.select || (O.opts.length ? [O.opts.find(e=>p.has(e)) || O.opts[0]] : []));
   if (!O.multi && O.opts.length) sel = new Set([O.opts[0]]);
+  // Training contract: when a recording holds both background noise and a sound event, noise is
+  // only removed together with the event (T01/T06/T07/T13 are undefined there). Noise stays locked
+  // until the event is selected.
+  const lockNE = op==="remove" && p.has("N") && p.has("E");
+  if (lockNE && sel.has("N") && !sel.has("E")) sel.add("E");
 
   const engine = new Engine();
   const view = new ColumnsView(engine, SIM_COLS(), scene.marks);
@@ -671,16 +716,22 @@ function sampleBlock(op, sm, index){
         O.opts.map(e => pills[e] = h("button",{class:"pill"+(p.has(e)?"":" absent")+(O.multi?"":" fixed"), style:cvars(e),
           title: p.has(e) ? EL_NAME[e] : EL_NAME[e]+" — not in this recording",
           onclick: () => { if (!O.multi) return;
+            if (lockNE && e==="N" && !sel.has("E")) return;            // locked until the event is chosen
             sel.has(e) ? sel.delete(e) : sel.add(e);
+            if (lockNE && e==="E" && !sel.has("E")) sel.delete("N");   // dropping the event drops noise too
             if (!sel.size) sel.add(e);
             update(); }},
           h("span",{class:"ck"},"✓"), h("i",{class:"dotc"}), elLabel(e, scene), p.has(e) ? null : h("span",{class:"x"},"· not in recording"))))
     : h("div",{class:"opts"}, h("span",{class:"lb"},"Element"), h("span",{class:"none"},"none — the prompt states a goal instead of naming elements"));
 
+  const lockHint = lockNE ? h("p",{class:"lockhint",hidden:true}, `Noise can be removed together with the ${elLabel("E",scene).toLowerCase()} — select it first.`) : null;
   const block = h("article",{class:"sample", id:`${op}-${sm.scene}`});
   function update(){
     const task = taskFor(op, sel), t = TASKS[task];
     for (const [e,b] of Object.entries(pills)) b.classList.toggle("on", sel.has(e));
+    if (lockNE){ const locked = !sel.has("E"); pills.N.classList.toggle("locked", locked); pills.N.setAttribute("aria-disabled", locked);
+      pills.N.title = locked ? `Select the ${elLabel("E",scene).toLowerCase()} first — noise is removed together with it` : EL_NAME.N;
+      lockHint.hidden = !locked; }
     promptBox.replaceChildren(promptNode((sm.prompts||{})[task] || canonicalPrompt(task, scene), scene));
     const missing = t.els.filter(e => !p.has(e));
     const noop = missing.length === t.els.length;
@@ -703,7 +754,7 @@ function sampleBlock(op, sm, index){
   const has = [...p].sort((a,b)=>ELS.indexOf(a)-ELS.indexOf(b)).map(e => h("span",{class:"el",style:cvars(e)}, h("i",{class:"dotc"}), elLabel(e, scene)));
   block.append(
     h("div",{class:"s-head"}, h("span",{class:"idx"}, "Sample "+(index+1)), h("span",{class:"has"}, has)),
-    ...[optsRow, promptBox, notice, sm.note ? h("p",{class:"s-note"}, sm.note) : null, view.el].filter(Boolean));
+    ...[optsRow, lockHint, promptBox, notice, sm.note ? h("p",{class:"s-note"}, sm.note) : null, view.el].filter(Boolean));
   update();
   return block;
 }
@@ -795,7 +846,8 @@ function realBlock(rw){
   const many = rw.outputs.length > 1;
   const inFolderA = f => f && !f.includes("/") ? base + f : f;
   const slots = [{key:"input", label:"Input", src: inFolderA(rw.input) || base+"input.wav"},
-    ...rw.outputs.map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output",
+    ...rw.outputs.map(o => ({...o, task: o.task ? o.task.replace(/^T(\d)$/i, "T0$1").toUpperCase() : o.task}))
+      .map((o,i) => ({key:"out"+i, label: many ? `Output ${i+1}` : "Output",
       src: inFolderA(o.src) || (o.task ? `${base}output_${o.task}.wav` : `${base}out_${i+1}.wav`),
       prompt: o.prompt || (o.task ? canonicalPrompt(o.task, {event: rw.event}) : ""), event: rw.event}))];
   const inFolder = f => f && !f.includes("/") ? base + f : f;     // "x.mp4" → audio/real/<id>/x.mp4
@@ -908,6 +960,7 @@ async function runCheck(){
     addSrc(sm.inputSrc || P.input(sm.scene));
     for (const [task,t] of Object.entries(TASKS)){
       if (t.op!==op || (sm.tasks && !sm.tasks.includes(task))) continue;
+      if (op==="remove" && p.has("N") && p.has("E") && t.els.includes("N") && !t.els.includes("E")) continue;   // locked combos
       addSrc((sm.outputs||{})[task] || P.output(sm.scene, task));
       if (DEMO.showTarget && t.els.some(e => p.has(e))) addSrc((sm.targets||{})[task] || P.target(sm.scene, task));
     }

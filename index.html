@@ -33,7 +33,10 @@ h1,h2,h3{margin:0;line-height:1.25;font-weight:700;letter-spacing:-.015em}
 
 /* header */
 header{padding:72px 0 36px;text-align:center}
-header h1{font-size:clamp(28px,4vw,40px)}
+header h1{font-size:clamp(26px,3.6vw,38px);line-height:1.22}
+header h1 .t2{font-weight:600;color:var(--ink2)}
+header.review{padding:80px 0 44px}
+header .status{display:inline-block;margin-top:18px;padding:5px 14px;border-radius:999px;border:1px solid var(--brand-bd);background:var(--brand-bg);color:var(--brand-dk);font-size:13px;font-weight:600;letter-spacing:.02em}
 header .sub{font-size:clamp(16px,2vw,19px);color:var(--muted);margin-top:8px}
 header .authors{margin-top:22px}
 header .aff{color:var(--muted);font-size:14px}
@@ -70,7 +73,7 @@ kbd{font:600 11px ui-monospace,Menlo,monospace;border:1px solid var(--line2);bor
 .dotc{width:9px;height:9px;border-radius:50%;background:color-mix(in srgb,var(--c-bd) 55%,var(--c-fg));display:inline-block;flex:none}
 
 /* nav */
-nav{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav{position:-webkit-sticky;position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 nav .wrap{position:relative;display:flex;gap:26px;overflow-x:auto;scrollbar-width:none}
 nav .wrap::-webkit-scrollbar{display:none}
 nav a{flex:none;text-decoration:none;color:var(--muted);font-size:14px;font-weight:500;padding:14px 0 12px;border-bottom:2px solid transparent}
@@ -177,14 +180,24 @@ section{padding:56px 0 8px}
 .trk.playing .pb{background:var(--brand);border-color:var(--brand);color:#fff}
 @media (max-width:860px){.vbox{position:sticky;top:44px;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.12)}.rw{grid-template-columns:1fr;grid-template-areas:"title" "video" "tracks";gap:0}.trks{margin-top:16px;gap:16px}.trk{flex:none}.trk .plot{flex:none;grid-template-rows:84px 15px}}
 
+footer.bare{padding:0;border:0;margin-top:48px}
 footer{padding:56px 0 72px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:56px}
 footer h3{font-size:15px;color:var(--ink);margin-bottom:10px}
 pre.bib{background:var(--soft);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink2);margin:0}
 #check{position:fixed;right:12px;bottom:12px;max-width:min(520px,calc(100vw - 24px));max-height:50vh;overflow:auto;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.12)}
 
+/* back to top */
+.totop{position:fixed;right:20px;bottom:20px;z-index:40;width:40px;height:40px;border-radius:50%;border:1px solid var(--line2);background:rgba(255,255,255,.95);color:var(--ink);display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.12);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s,border-color .15s,color .15s}
+.totop.show{opacity:1;transform:none;pointer-events:auto}
+.totop:hover{border-color:var(--brand);color:var(--brand-dk)}
+.totop svg{width:16px;height:16px;fill:currentColor}
+
 /* ---------- phones ---------- */
 @media (max-width:600px){
   header{padding:44px 0 24px}
+  header.review{padding:52px 0 32px}
+  header .status{margin-top:14px;font-size:12.5px}
+  .totop{right:14px;bottom:14px;width:38px;height:38px}
   header .authors{margin-top:16px;font-size:14.5px}
   header .aff,header .notes{font-size:12.5px}
   header .btns{margin-top:16px}
@@ -247,8 +260,12 @@ pre.bib{background:var(--soft);border-radius:8px;padding:14px 16px;overflow-x:au
  * ===================================================================== */
 const DEMO = {
   meta: {
+    /* "review"    → title + "Under review" only (no authors, links, abstract, citation)
+       "published" → full header: authors, affiliations, Paper/Code buttons, abstract, citation */
+    stage: "review",
     title: "Speech Remastering",
-    subtitle: "Prompt-driven revision of a recorded speaking scene",
+    subtitle: "Text Prompt-based Control of Speaking Scenes",      // shown as "Title: Subtitle"
+    status: "Under review",
     /* aff = 1-based index into affiliations; corr:true adds corrMark; sym adds an extra footnote mark */
     authors: [
       {name:"Myungjin Lee",   aff:[1,2], sym:"*"},
@@ -923,13 +940,17 @@ function render(){
   const M = DEMO.meta, app = document.getElementById("app");
   const btns = h("div",{class:"btns"}, (M.links||[]).map(l => h("a",{href:l.href, target:l.href && l.href!=="#" ? "_blank" : null, rel:"noopener"},
     l.icon ? h("span",{class:"ic","aria-hidden":"true"}, l.icon) : null, l.label)));
-  const header = h("header",{id:"top"}, h("div",{class:"wrap"},
-    h("h1",{}, M.title), h("div",{class:"sub"}, M.subtitle),
-    authorLine(M), affLine(M),
-    M.footnotes ? h("div",{class:"notes"}, M.footnotes.map((f,i) => h("span",{class:"af"}, h("sup",{}, f.sym), " "+f.text))) : null,
-    M.venue ? h("div",{class:"aff"}, M.venue) : null,
-    btns, h("div",{class:"abstract"}, h("h2",{},"Abstract"), h("p",{}, M.intro),
-      M.indexTerms ? h("p",{class:"terms"}, h("b",{},"Index Terms — "), M.indexTerms) : null)));
+  const review = M.stage !== "published";
+  const titleEl = h("h1",{}, M.title, M.subtitle ? [":", h("br"), h("span",{class:"t2"}, M.subtitle)] : null);
+  const header = review
+    ? h("header",{id:"top", class:"review"}, h("div",{class:"wrap"}, titleEl,
+        M.status ? h("div",{class:"status"}, M.status) : null))
+    : h("header",{id:"top"}, h("div",{class:"wrap"}, titleEl,
+        authorLine(M), affLine(M),
+        M.footnotes ? h("div",{class:"notes"}, M.footnotes.map((f,i) => h("span",{class:"af"}, h("sup",{}, f.sym), " "+f.text))) : null,
+        M.venue ? h("div",{class:"aff"}, M.venue) : null,
+        btns, h("div",{class:"abstract"}, h("h2",{},"Abstract"), h("p",{}, M.intro),
+          M.indexTerms ? h("p",{class:"terms"}, h("b",{},"Index Terms — "), M.indexTerms) : null)));
 
   const secs = [["guide","How to listen", guideSection()]];
   if (DEMO.hero && DEMO.hero.show) secs.push(["all21","21 prompts", heroSection()]);
@@ -940,8 +961,15 @@ function render(){
     DEMO.realworld.map(realBlock)))]);
 
   const nav = h("nav",{}, h("div",{class:"wrap"}, secs.map(([id,label]) => h("a",{href:"#"+id,"data-id":id}, label))));
-  const footer = h("footer",{}, h("div",{class:"wrap"}, h("h3",{},"Citation"), h("pre",{class:"bib"}, M.bibtex||"")));
-  app.append(header, nav, ...secs.map(s=>s[2]), footer);
+  const footer = review ? h("footer",{class:"bare"})
+                         : h("footer",{}, h("div",{class:"wrap"}, h("h3",{},"Citation"), h("pre",{class:"bib"}, M.bibtex||"")));
+  // back-to-top button, shown once the page is scrolled past the header
+  const toTop = h("button",{class:"totop", "aria-label":"Back to top", title:"Back to top",
+    html:'<svg viewBox="0 0 16 16"><path d="M8 3.5 2.5 9l1.1 1.1L7.2 6.5V13h1.6V6.5l3.6 3.6L13.5 9z"/></svg>',
+    onclick:()=>window.scrollTo({top:0, behavior:"smooth"})});
+  app.append(header, nav, ...secs.map(s=>s[2]), footer, toTop);
+  const showTop = () => toTop.classList.toggle("show", window.scrollY > Math.max(400, header.offsetHeight));
+  window.addEventListener("scroll", showTop, {passive:true}); showTop();
 
   const as = [...nav.querySelectorAll("a")], bar = nav.firstChild;
   const spy = new IntersectionObserver(ents => ents.forEach(e => { if (!e.isIntersecting) return;

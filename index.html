@@ -321,7 +321,7 @@ const DEMO = {
                   ],
     reduce:    [ {scene:"rd1"}, {scene:"rd2"} ],
     enhance:   [ {scene:"en1"}, {scene:"en2"}, {scene:"en3"} ],
-    boost:     [ {scene:"bo1", select:["M"]}, {scene:"bo2", select:["I"]}, {scene:"bo3", select:["M","I"]} ],
+    amplify:   [ {scene:"bo1", select:["M"]}, {scene:"bo2", select:["I"]}, {scene:"bo3", select:["M","I"]} ],
     normalize: [ {scene:"nm1"}, {scene:"nm2"} ],
   },
 
@@ -329,10 +329,10 @@ const DEMO = {
   hero: { show:false, scene:"hero", prompts:{} },
 
   realworld: [
-    { id:"rw04", title:"Sample 1", source:"Source: AudioCaps",
+    { id:"rw04", title:"Sample 1", source:"Source: AudioCaps (Kim et al.)",
       video:"test00000_video.mp4", event:"the applauding sound",
       outputs:[ {task:"T01"}, {task:"T04"} ] },
-    { id:"rw05", title:"Sample 2", source:"Source: AudioCaps",
+    { id:"rw05", title:"Sample 2", source:"Source: AudioCaps (Kim et al.)",
       video:"test00302_video.mp4",
       outputs:[ {task:"T16"}, {task:"T18"} ] },
   ],
@@ -350,17 +350,18 @@ const TASKS = {
   T08:{op:"remove",els:["I","E"]}, T09:{op:"remove",els:["E","R"]}, T10:{op:"remove",els:["I","R"]},
   T11:{op:"remove",els:["I","N","E"]}, T12:{op:"remove",els:["N","E","R"]}, T13:{op:"remove",els:["I","N","R"]},
   T14:{op:"remove",els:["I","E","R"]}, T15:{op:"remove",els:["I","N","E","R"]},
-  T16:{op:"boost",els:["M"]}, T17:{op:"boost",els:["M","I"]}, T18:{op:"enhance",els:["N","E","R"]},
-  T19:{op:"reduce",els:["R"]}, T20:{op:"boost",els:["I"]}, T21:{op:"normalize",els:["I"]},
+  T16:{op:"amplify",els:["M"]}, T17:{op:"amplify",els:["M","I"]}, T18:{op:"enhance",els:["N","E","R"]},
+  T19:{op:"reduce",els:["R"]}, T20:{op:"amplify",els:["I"]}, T21:{op:"normalize",els:["I"]},
 };
 const OPS = {
   remove:   {label:"Remove",    desc:"Takes the named elements out of the recording; everything the prompt does not name stays as captured. Several elements can be named in one prompt.", verbs:["remove","erase","eliminate","delete","get rid of","strip out"], opts:["I","N","E","R"], multi:true},
   reduce:   {label:"Reduce",    desc:"Halves the reverberant tail of the recorded room while keeping its direct path, so the room is revised rather than replaced.", verbs:["reduce","dampen","mitigate","attenuate"], opts:["R"]},
   enhance:  {label:"Enhance",   desc:"A goal-level request. Noise, sound events and reverberation are removed together and only the speech is left — conventional speech enhancement, reached as one operation of the model.", verbs:["enhance","clean"], opts:[]},
-  boost:    {label:"Boost",     desc:"Raises the named speech by +6 dB while the rest of the scene keeps its level.", verbs:["boost","amplify","make … louder","raise / increase / turn up the volume of"], opts:["M","I"], multi:true},
+  amplify:  {label:"Amplify",   desc:"Raises the named speech by +6 dB while the rest of the scene keeps its level.", verbs:["amplify","boost","make … louder","raise / increase / turn up the volume of"], opts:["M","I"], multi:true},
   normalize:{label:"Normalize", desc:"Matches the level of the interfering speaker to that of the main speaker.", verbs:["normalize","balance","match the volume of"], opts:["I"]},
 };
-const OP_ORDER = ["remove","reduce","enhance","boost","normalize"];
+const OP_ORDER = ["remove","reduce","enhance","amplify","normalize"];
+if (DEMO.sections.boost && !DEMO.sections.amplify) DEMO.sections.amplify = DEMO.sections.boost;   // old key still works
 const REMOVE_COMBO = {};
 for (const [id,t] of Object.entries(TASKS)) if (t.op==="remove") REMOVE_COMBO[[...t.els].sort().join("")] = id;
 function taskFor(op, sel){
@@ -368,7 +369,7 @@ function taskFor(op, sel){
     case "remove":    return REMOVE_COMBO[[...sel].sort().join("")];
     case "reduce":    return "T19";
     case "enhance":   return "T18";
-    case "boost":     return sel.has("M") && sel.has("I") ? "T17" : sel.has("I") ? "T20" : "T16";
+    case "amplify":   return sel.has("M") && sel.has("I") ? "T17" : sel.has("I") ? "T20" : "T16";
     case "normalize": return "T21";
   }
 }
@@ -412,7 +413,7 @@ function canonicalPrompt(task, scene){
     case "remove":    return "remove " + joinList(t.els.map(np));
     case "reduce":    return "reduce the reverberation";
     case "enhance":   return "enhance the speech";
-    case "boost":     return task==="T17" ? "boost all speakers" : "boost " + np(t.els[0]);
+    case "amplify":   return task==="T17" ? "amplify all speakers" : "amplify " + np(t.els[0]);
     case "normalize": return "normalize the speakers";
   }
 }
@@ -792,7 +793,7 @@ function heroSection(){
   engine.view = view;
   let op = "remove", sel = new Set(["I","N","E","R"].filter(e=>p.has(e)));
   const promptBox = h("div"), pills = [];
-  const groups = [["remove",["I","N","E","R"],true], ["reduce",["R"],false], ["enhance",[],false], ["boost",["M","I"],true], ["normalize",["I"],false]];
+  const groups = [["remove",["I","N","E","R"],true], ["reduce",["R"],false], ["enhance",[],false], ["amplify",["M","I"],true], ["normalize",["I"],false]];
   const rows = groups.map(([g, els, multi]) => h("div",{class:"opts"}, h("span",{class:"lb"}, OPS[g].label),
     (els.length ? els : ["_"]).map(e => { const b = h("button",{class:"pill", style:e==="_"?null:cvars(e), onclick:()=>{
         if (op!==g){ op=g; sel=new Set(e==="_"?[]:[e]); } else if (multi){ sel.has(e)?sel.delete(e):sel.add(e); if (!sel.size) sel.add(e); }
@@ -957,7 +958,7 @@ function render(){
   for (const op of OP_ORDER) if ((DEMO.sections[op]||[]).length) secs.push([op, OPS[op].label, opSection(op)]);
   if ((DEMO.realworld||[]).length) secs.push(["real","Real-world", h("section",{id:"real"}, h("div",{class:"wrap"},
     h("div",{class:"sec-head"}, h("h2",{},"Real-world recordings"),
-      h("p",{class:"desc"},"In-the-wild clips with no reference target. The video is the same for every version; only the audio changes. Press play on a version to hear it in sync with the picture, and switch versions while it plays.")),
+      h("p",{class:"desc"},"In-the-wild clips taken from AudioCaps (Kim et al.), with no reference target. The video is the same for every version; only the audio changes. Press play on a version to hear it in sync with the picture, and switch versions while it plays.")),
     DEMO.realworld.map(realBlock)))]);
 
   const nav = h("nav",{}, h("div",{class:"wrap"}, secs.map(([id,label]) => h("a",{href:"#"+id,"data-id":id}, label))));

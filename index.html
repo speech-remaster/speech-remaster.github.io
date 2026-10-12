@@ -329,10 +329,13 @@ const DEMO = {
   hero: { show:false, scene:"hero", prompts:{} },
 
   realworld: [
-    { id:"rw05", title:"Sample 2", source:"Source: AudioCaps (Kim et al.)",
+    { id:"rw05", title:"Sample 1", source:"Source: AudioCaps (Kim et al.)",
       video:"test00302_video.mp4",
       outputs:[ {task:"T16"}, {task:"T18"} ] },
-    { id:"rw04", title:"Sample 1", source:"Source: AudioCaps (Kim et al.)",
+    { id:"rw04", title:"Sample 2", source:"Source: AudioSet (Gemmeke et al.)",
+      video:"e6_audioset_video.mp4", event:"the applauding sound",
+      outputs:[ {task:"T04"}, {task:"T01"} ] },
+    { id:"rw04", title:"Sample 3", source:"Source: AudioCaps (Kim et al.)",
       video:"test00000_video.mp4", event:"the applauding sound",
       outputs:[ {task:"T01"}, {task:"T04"} ] },
   ],
@@ -958,7 +961,7 @@ function render(){
   for (const op of OP_ORDER) if ((DEMO.sections[op]||[]).length) secs.push([op, OPS[op].label, opSection(op)]);
   if ((DEMO.realworld||[]).length) secs.push(["real","Real-world", h("section",{id:"real"}, h("div",{class:"wrap"},
     h("div",{class:"sec-head"}, h("h2",{},"Real-world recordings"),
-      h("p",{class:"desc"},"In-the-wild clips taken from AudioCaps (Kim et al.), with no reference target. The video is the same for every version; only the audio changes. Press play on a version to hear it in sync with the picture, and switch versions while it plays.")),
+      h("p",{class:"desc"},"Real-world clips taken from AudioCaps (Kim et al.) and AudioSet (Gemmeke et al.), with no reference target. The video is the same for every version; only the audio changes. Press play on a version to hear it in sync with the picture, and switch versions while it plays.")),
     DEMO.realworld.map(realBlock)))]);
 
   const nav = h("nav",{}, h("div",{class:"wrap"}, secs.map(([id,label]) => h("a",{href:"#"+id,"data-id":id}, label))));
